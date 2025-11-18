@@ -1,5 +1,6 @@
 import React from 'react';
 import type { VolunteerExperienceEntry } from '../types';
+import { getMonthInputValue } from '../utils/dateFields';
 import { useConfirmDialog } from './ConfirmDialogProvider';
 
 export interface VolunteerFormProps {
@@ -163,13 +164,12 @@ export const VolunteerForm: React.FC<VolunteerFormProps> = ({
                   Start Date
                 </label>
                 <input
-                  type="text"
+                  type="month"
                   className="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={entry.startDate}
+                  value={getMonthInputValue(entry.startDate)}
                   onChange={(e) =>
                     updateEntry(entry.id, { startDate: e.target.value })
                   }
-                  placeholder="Jan 2023"
                 />
               </div>
               <div>
@@ -177,13 +177,14 @@ export const VolunteerForm: React.FC<VolunteerFormProps> = ({
                   End Date
                 </label>
                 <input
-                  type="text"
+                  type="month"
                   className="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100"
-                  value={entry.isCurrent ? '' : entry.endDate}
+                  value={
+                    entry.isCurrent ? '' : getMonthInputValue(entry.endDate)
+                  }
                   onChange={(e) =>
                     updateEntry(entry.id, { endDate: e.target.value })
                   }
-                  placeholder="Dec 2023"
                   disabled={entry.isCurrent}
                 />
                 <label className="mt-1 flex items-center gap-2 text-[11px] text-slate-600">

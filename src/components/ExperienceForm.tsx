@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ExperienceEntry } from '../types';
+import { getMonthInputValue } from '../utils/dateFields';
 import { useConfirmDialog } from './ConfirmDialogProvider';
 
 export interface ExperienceFormProps {
@@ -153,10 +154,9 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
                   Start Date
                 </label>
                 <input
-                  type="text"
-                  placeholder="Jan 2022"
+                  type="month"
                   className="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={entry.startDate}
+                  value={getMonthInputValue(entry.startDate)}
                   onChange={(e) =>
                     updateEntry(entry.id, { startDate: e.target.value })
                   }
@@ -168,10 +168,11 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
                 </label>
                 <div className="mt-1 flex items-center gap-2">
                   <input
-                    type="text"
-                    placeholder="Mar 2024"
+                    type="month"
                     className="block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100"
-                    value={entry.isCurrent ? '' : entry.endDate}
+                    value={
+                      entry.isCurrent ? '' : getMonthInputValue(entry.endDate)
+                    }
                     onChange={(e) =>
                       updateEntry(entry.id, { endDate: e.target.value })
                     }

@@ -1,5 +1,6 @@
 import React from 'react';
 import type { EducationEntry } from '../types';
+import { getMonthInputValue } from '../utils/dateFields';
 import { useConfirmDialog } from './ConfirmDialogProvider';
 
 export interface EducationFormProps {
@@ -150,13 +151,12 @@ export const EducationForm: React.FC<EducationFormProps> = ({
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700">
-                  Start Year
+                  Start Month
                 </label>
                 <input
-                  type="text"
-                  placeholder="2019"
+                  type="month"
                   className="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={entry.startYear}
+                  value={getMonthInputValue(entry.startYear)}
                   onChange={(e) =>
                     updateEntry(entry.id, { startYear: e.target.value })
                   }
@@ -164,13 +164,14 @@ export const EducationForm: React.FC<EducationFormProps> = ({
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700">
-                  End Year
+                  End Month
                 </label>
                 <input
-                  type="text"
-                  placeholder="2023"
+                  type="month"
                   className="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100"
-                  value={entry.isCurrent ? '' : entry.endYear}
+                  value={
+                    entry.isCurrent ? '' : getMonthInputValue(entry.endYear)
+                  }
                   onChange={(e) =>
                     updateEntry(entry.id, { endYear: e.target.value })
                   }

@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { CvData, SectionId, FontSettings } from '../types';
+import { formatMonthForDisplay } from '../utils/dateFields';
 
 const hasText = (value?: string | null): boolean =>
   Boolean(value && value.trim().length > 0);
@@ -402,35 +403,44 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
                     Experience
                   </h2>
                   <div className="space-y-2">
-                    {experience
-                      .filter((e) => e.jobTitle || e.company || e.description)
-                      .map((e) => (
-                        <div key={e.id}>
-                          <div className="flex justify-between">
-                            <div>
-                              <p className="text-[12px] font-semibold">
-                                {e.jobTitle || 'Job title'}
-                              </p>
-                              <p className="text-[11px] text-slate-600">
-                                {e.company}
-                                {e.location ? ` • ${e.location}` : ''}
-                              </p>
+                      {experience
+                        .filter((e) => e.jobTitle || e.company || e.description)
+                        .map((e) => {
+                          const startDate = formatMonthForDisplay(e.startDate);
+                          const endDate = e.isCurrent
+                            ? 'Present'
+                            : formatMonthForDisplay(e.endDate);
+                          const hasRange = Boolean(startDate || endDate);
+                          return (
+                            <div key={e.id}>
+                              <div className="flex justify-between">
+                                <div>
+                                  <p className="text-[12px] font-semibold">
+                                    {e.jobTitle || 'Job title'}
+                                  </p>
+                                  <p className="text-[11px] text-slate-600">
+                                    {e.company}
+                                    {e.location ? ` • ${e.location}` : ''}
+                                  </p>
+                                </div>
+                                {hasRange && (
+                                  <p className="text-[11px] text-slate-500">
+                                    {startDate}
+                                    {(endDate || e.isCurrent) && ' – '}
+                                    {endDate}
+                                  </p>
+                                )}
+                              </div>
+                              {e.description && (
+                                <div className="mt-1 text-[11px] text-slate-700">
+                                  <ReactMarkdown skipHtml>
+                                    {e.description}
+                                  </ReactMarkdown>
+                                </div>
+                              )}
                             </div>
-                            {(e.startDate || e.endDate || e.isCurrent) && (
-                              <p className="text-[11px] text-slate-500">
-                                {e.startDate}
-                                {e.startDate || e.endDate || e.isCurrent ? ' – ' : ''}
-                                {e.isCurrent ? 'Present' : e.endDate}
-                              </p>
-                            )}
-                          </div>
-                          {e.description && (
-                            <div className="mt-1 text-[11px] text-slate-700">
-                              <ReactMarkdown skipHtml>{e.description}</ReactMarkdown>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                          );
+                        })}
                   </div>
                 </section>
               );
@@ -446,35 +456,44 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
                     Education
                   </h2>
                   <div className="space-y-2">
-                    {education
-                      .filter((e) => e.degree || e.institution || e.description)
-                      .map((e) => (
-                        <div key={e.id}>
-                          <div className="flex justify-between">
-                            <div>
-                              <p className="text-[12px] font-semibold">
-                                {e.degree || 'Degree'}
-                              </p>
-                              <p className="text-[11px] text-slate-600">
-                                {e.institution}
-                                {e.location ? ` • ${e.location}` : ''}
-                              </p>
+                      {education
+                        .filter((e) => e.degree || e.institution || e.description)
+                        .map((e) => {
+                          const startYear = formatMonthForDisplay(e.startYear);
+                          const endYear = e.isCurrent
+                            ? 'Present'
+                            : formatMonthForDisplay(e.endYear);
+                          const hasRange = Boolean(startYear || endYear);
+                          return (
+                            <div key={e.id}>
+                              <div className="flex justify-between">
+                                <div>
+                                  <p className="text-[12px] font-semibold">
+                                    {e.degree || 'Degree'}
+                                  </p>
+                                  <p className="text-[11px] text-slate-600">
+                                    {e.institution}
+                                    {e.location ? ` • ${e.location}` : ''}
+                                  </p>
+                                </div>
+                                {hasRange && (
+                                  <p className="text-[11px] text-slate-500">
+                                    {startYear}
+                                    {(endYear || e.isCurrent) && ' – '}
+                                    {endYear}
+                                  </p>
+                                )}
+                              </div>
+                              {e.description && (
+                                <div className="mt-1 text-[11px] text-slate-700">
+                                  <ReactMarkdown skipHtml>
+                                    {e.description}
+                                  </ReactMarkdown>
+                                </div>
+                              )}
                             </div>
-                            {(e.startYear || e.endYear || e.isCurrent) && (
-                              <p className="text-[11px] text-slate-500">
-                                {e.startYear}
-                                {e.startYear || e.endYear || e.isCurrent ? ' – ' : ''}
-                                {e.isCurrent ? 'Present' : e.endYear}
-                              </p>
-                            )}
-                          </div>
-                          {e.description && (
-                            <div className="mt-1 text-[11px] text-slate-700">
-                              <ReactMarkdown skipHtml>{e.description}</ReactMarkdown>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                          );
+                        })}
                   </div>
                 </section>
               );
@@ -536,28 +555,31 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
                     Achievements / Awards
                   </h2>
                   <div className="space-y-2">
-                    {achievements.filter(achievementHasContent).map((a) => (
-                      <div key={a.id}>
-                        <div className="flex justify-between">
-                          <div>
-                            <p className="text-[12px] font-semibold">
-                              {a.name || 'Award'}
-                            </p>
-                            <p className="text-[11px] text-slate-600">
-                              {a.organization}
-                            </p>
+                    {achievements.filter(achievementHasContent).map((a) => {
+                      const date = formatMonthForDisplay(a.date);
+                      return (
+                        <div key={a.id}>
+                          <div className="flex justify-between">
+                            <div>
+                              <p className="text-[12px] font-semibold">
+                                {a.name || 'Award'}
+                              </p>
+                              <p className="text-[11px] text-slate-600">
+                                {a.organization}
+                              </p>
+                            </div>
+                            {date && (
+                              <p className="text-[11px] text-slate-500">{date}</p>
+                            )}
                           </div>
-                          {a.date && (
-                            <p className="text-[11px] text-slate-500">{a.date}</p>
+                          {a.context && (
+                            <p className="mt-1 text-[11px] text-slate-700">
+                              {a.context}
+                            </p>
                           )}
                         </div>
-                        {a.context && (
-                          <p className="mt-1 text-[11px] text-slate-700">
-                            {a.context}
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </section>
               );
@@ -573,28 +595,31 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
                     Publications
                   </h2>
                   <div className="space-y-2">
-                    {publications.filter(publicationHasContent).map((pub) => (
-                      <div key={pub.id}>
-                        <p className="text-[12px] font-semibold">
-                          {pub.title || 'Publication'}
-                        </p>
-                        <p className="text-[11px] text-slate-600">
-                          {pub.venue}
-                          {pub.year ? ` • ${pub.year}` : ''}
-                        </p>
-                        {pub.coAuthors && (
-                          <p className="text-[11px] text-slate-500">
-                            Co-authors: {pub.coAuthors}
+                    {publications.filter(publicationHasContent).map((pub) => {
+                      const publishedDate = formatMonthForDisplay(pub.year);
+                      return (
+                        <div key={pub.id}>
+                          <p className="text-[12px] font-semibold">
+                            {pub.title || 'Publication'}
                           </p>
-                        )}
-                        {pub.link &&
-                          renderExternalLink(
-                            pub.link,
-                            pub.link,
-                            'text-[11px] text-blue-600 break-all hover:underline',
+                          <p className="text-[11px] text-slate-600">
+                            {pub.venue}
+                            {publishedDate ? ` • ${publishedDate}` : ''}
+                          </p>
+                          {pub.coAuthors && (
+                            <p className="text-[11px] text-slate-500">
+                              Co-authors: {pub.coAuthors}
+                            </p>
                           )}
-                      </div>
-                    ))}
+                          {pub.link &&
+                            renderExternalLink(
+                              pub.link,
+                              pub.link,
+                              'text-[11px] text-blue-600 break-all hover:underline',
+                            )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </section>
               );
@@ -610,39 +635,42 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
                     Talks / Conferences / Workshops
                   </h2>
                   <div className="space-y-2">
-                    {talks.filter(talkHasContent).map((talk) => (
-                      <div key={talk.id}>
-                        <div className="flex justify-between">
-                          <div>
-                            <p className="text-[12px] font-semibold">
-                              {talk.title || 'Talk'}
-                            </p>
-                            <p className="text-[11px] text-slate-600">
-                              {talk.event}
-                            </p>
+                    {talks.filter(talkHasContent).map((talk) => {
+                      const talkDate = formatMonthForDisplay(talk.date);
+                      return (
+                        <div key={talk.id}>
+                          <div className="flex justify-between">
+                            <div>
+                              <p className="text-[12px] font-semibold">
+                                {talk.title || 'Talk'}
+                              </p>
+                              <p className="text-[11px] text-slate-600">
+                                {talk.event}
+                              </p>
+                            </div>
+                            {(talkDate || talk.role) && (
+                              <p className="text-[11px] text-slate-500 text-right">
+                                {talk.role && `${talk.role}`}
+                                {talk.role && talkDate ? ' • ' : ''}
+                                {talkDate}
+                              </p>
+                            )}
                           </div>
-                          {(talk.date || talk.role) && (
-                            <p className="text-[11px] text-slate-500 text-right">
-                              {talk.role && `${talk.role}`}
-                              {talk.role && talk.date ? ' • ' : ''}
-                              {talk.date}
-                            </p>
-                          )}
+                          {talk.locationOrLink &&
+                            (looksLikeUrl(talk.locationOrLink) ? (
+                              renderExternalLink(
+                                talk.locationOrLink,
+                                talk.locationOrLink,
+                                'text-[11px] text-blue-600 break-all hover:underline',
+                              )
+                            ) : (
+                              <p className="text-[11px] text-slate-500 break-all">
+                                {talk.locationOrLink}
+                              </p>
+                            ))}
                         </div>
-                        {talk.locationOrLink &&
-                          (looksLikeUrl(talk.locationOrLink) ? (
-                            renderExternalLink(
-                              talk.locationOrLink,
-                              talk.locationOrLink,
-                              'text-[11px] text-blue-600 break-all hover:underline',
-                            )
-                          ) : (
-                            <p className="text-[11px] text-slate-500 break-all">
-                              {talk.locationOrLink}
-                            </p>
-                          ))}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </section>
               );
@@ -658,33 +686,40 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
                     Volunteer Experience
                   </h2>
                   <div className="space-y-2">
-                    {volunteer.filter(volunteerHasContent).map((v) => (
-                      <div key={v.id}>
-                        <div className="flex justify-between">
-                          <div>
-                            <p className="text-[12px] font-semibold">
-                              {v.role || 'Volunteer role'}
-                            </p>
-                            <p className="text-[11px] text-slate-600">
-                              {v.organization}
-                              {v.location ? ` • ${v.location}` : ''}
-                            </p>
+                    {volunteer.filter(volunteerHasContent).map((v) => {
+                      const startDate = formatMonthForDisplay(v.startDate);
+                      const endDate = v.isCurrent
+                        ? 'Present'
+                        : formatMonthForDisplay(v.endDate);
+                      const hasRange = Boolean(startDate || endDate);
+                      return (
+                        <div key={v.id}>
+                          <div className="flex justify-between">
+                            <div>
+                              <p className="text-[12px] font-semibold">
+                                {v.role || 'Volunteer role'}
+                              </p>
+                              <p className="text-[11px] text-slate-600">
+                                {v.organization}
+                                {v.location ? ` • ${v.location}` : ''}
+                              </p>
+                            </div>
+                            {hasRange && (
+                              <p className="text-[11px] text-slate-500">
+                                {startDate}
+                                {(endDate || v.isCurrent) && ' – '}
+                                {endDate}
+                              </p>
+                            )}
                           </div>
-                          {(v.startDate || v.endDate || v.isCurrent) && (
-                            <p className="text-[11px] text-slate-500">
-                              {v.startDate}
-                              {v.startDate || v.endDate || v.isCurrent ? ' – ' : ''}
-                              {v.isCurrent ? 'Present' : v.endDate}
+                          {v.responsibilities && (
+                            <p className="mt-1 text-[11px] text-slate-700 whitespace-pre-line">
+                              {v.responsibilities}
                             </p>
                           )}
                         </div>
-                        {v.responsibilities && (
-                          <p className="mt-1 text-[11px] text-slate-700 whitespace-pre-line">
-                            {v.responsibilities}
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </section>
               );

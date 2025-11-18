@@ -1,5 +1,6 @@
 import React from 'react';
 import type { TalkEntry } from '../types';
+import { getMonthInputValue } from '../utils/dateFields';
 import { useConfirmDialog } from './ConfirmDialogProvider';
 
 export interface TalksFormProps {
@@ -139,13 +140,12 @@ export const TalksForm: React.FC<TalksFormProps> = ({ entries, onChange }) => {
                   Date
                 </label>
                 <input
-                  type="text"
+                  type="month"
                   className="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={entry.date}
+                  value={getMonthInputValue(entry.date)}
                   onChange={(e) =>
                     updateEntry(entry.id, { date: e.target.value })
                   }
-                  placeholder="Mar 2024"
                 />
               </div>
             </div>
