@@ -1,5 +1,0 @@
-- Use modern React function components with hooks (`useState`, `useMemo`) and prop drilling for callbacks; no class components observed.
-- Strict TypeScript interfaces/types defined in `src/types.ts`; components expect typed props and rely on discriminated `sectionsOrder` values.
-- Styling handled with Tailwind utility classes directly in JSX; keep layout responsive and print-friendly tweaks already present.
-- Form inputs managed as controlled components; event handlers update parent state immutably using spread operators.
-- Copy uses sentence case; section labels drawn from `sectionLabel` map for built-ins, fallback text "Custom section" currently used for untitled custom entries.
