@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  body {
+    margin: 0 !important;
+    background: #fff;
+  }
+
+  .cv-preview-content {
+    font-size: 1rem;
+    line-height: 1.65;
+  }
+
+  .cv-preview-content .text-xs {
+    font-size: 0.9rem !important;
+  }
+
+  .cv-preview-content .text-sm {
+    font-size: 1rem !important;
+  }
+
+  .cv-preview-content .text-xl {
+    font-size: 1.5rem !important;
+  }
+
+  .cv-preview-content .text-\[12px\] {
+    font-size: 14px !important;
+  }
+
+  .cv-preview-content .text-\[11px\] {
+    font-size: 13px !important;
+  }
+
+  .cv-preview-content .text-\[10px\] {
+    font-size: 12px !important;
+  }
+}

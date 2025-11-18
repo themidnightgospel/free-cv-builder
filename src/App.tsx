@@ -1,0 +1,918 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import type {
+  CvData,
+  CvSectionKey,
+  EducationEntry,
+  ExperienceEntry,
+  PersonalInfo,
+  SectionId,
+  ProjectEntry,
+  AchievementEntry,
+} from './types';
+import { PersonalInfoForm } from './components/PersonalInfoForm';
+import { ExperienceForm } from './components/ExperienceForm';
+import { EducationForm } from './components/EducationForm';
+import { SkillsForm } from './components/SkillsForm';
+import { CvPreview } from './components/CvPreview';
+import { CustomSectionForm } from './components/CustomSectionForm';
+import { ProjectsForm } from './components/ProjectsForm';
+import { AchievementsForm } from './components/AchievementsForm';
+import { PublicationsForm } from './components/PublicationsForm';
+import { TalksForm } from './components/TalksForm';
+import { VolunteerForm } from './components/VolunteerForm';
+import { OpenSourceForm } from './components/OpenSourceForm';
+import { PortfolioForm } from './components/PortfolioForm';
+import { LanguagesForm } from './components/LanguagesForm';
+
+declare global {
+  interface Window {
+    fillForm?: () => void;
+  }
+}
+
+const createEmptyPersonalInfo = (): PersonalInfo => ({
+  fullName: '',
+  jobTitle: '',
+  summary: '',
+  email: '',
+  phone: '',
+  location: '',
+  website: '',
+  linkedin: '',
+  photoDataUrl: null,
+});
+
+const createEmptyExperience = (): ExperienceEntry => ({
+  id: crypto.randomUUID(),
+  jobTitle: '',
+  company: '',
+  location: '',
+  startDate: '',
+  endDate: '',
+  isCurrent: false,
+  description: '',
+});
+
+const createEmptyEducation = (): EducationEntry => ({
+  id: crypto.randomUUID(),
+  degree: '',
+  institution: '',
+  location: '',
+  startYear: '',
+  endYear: '',
+  isCurrent: false,
+  description: '',
+});
+
+const createEmptyProject = (): ProjectEntry => ({
+  id: crypto.randomUUID(),
+  name: '',
+  role: '',
+  techStack: '',
+  description: '',
+  achievements: '',
+  link: '',
+});
+
+const createEmptyAchievement = (): AchievementEntry => ({
+  id: crypto.randomUUID(),
+  name: '',
+  organization: '',
+  date: '',
+  context: '',
+});
+
+const createInitialCv = (): CvData => ({
+  personalInfo: createEmptyPersonalInfo(),
+  experience: [createEmptyExperience()],
+  education: [createEmptyEducation()],
+  projects: [createEmptyProject()],
+  achievements: [createEmptyAchievement()],
+  publications: [],
+  talks: [],
+  volunteer: [],
+  openSource: [],
+  skills: [],
+  languages: [],
+  portfolio: [],
+  customSections: [],
+  sectionsOrder: [
+    'personal',
+    'experience',
+    'volunteer',
+    'projects',
+    'opensource',
+    'achievements',
+    'education',
+    'publications',
+    'talks',
+    'skills',
+    'languages',
+    'portfolio',
+  ],
+});
+
+const createSampleCv = (): CvData => {
+  const makeId = () => crypto.randomUUID();
+  const customSections = [
+    {
+      id: makeId(),
+      title: 'Community Leadership',
+      body: `### Community Programs
+- Organized quarterly meetups focused on accessibility testing.
+- Built a mentorship circle pairing mid-level engineers with students.`,
+    },
+    {
+      id: makeId(),
+      title: 'Professional Development',
+      body: `- Mentor three junior engineers through monthly growth sessions.
+- Curate a \"What’s New in Frontend\" internal newsletter every sprint.`,
+    },
+  ];
+  const customSectionIds: SectionId[] = customSections.map(
+    (section) => `custom:${section.id}` as SectionId,
+  );
+
+  return {
+    personalInfo: {
+      fullName: 'Jordan Rivera',
+      jobTitle: 'Senior Frontend Engineer',
+      summary:
+        'Product-minded engineer with a focus on accessibility, design systems, and data visualization for SaaS platforms.',
+      email: 'jordan.rivera@example.com',
+      phone: '+1 (555) 000-1234',
+      location: 'Remote / NYC timezone',
+      website: 'https://jordanrivera.dev',
+      linkedin: 'https://www.linkedin.com/in/jordanrivera',
+      photoDataUrl: null,
+    },
+    experience: [
+      {
+        id: makeId(),
+        jobTitle: 'Lead Frontend Engineer',
+        company: 'Aurora Analytics',
+        location: 'Remote',
+        startDate: 'Mar 2021',
+        endDate: '',
+        isCurrent: true,
+        description:
+          '- Own the company design system and accessibility guidelines.\n- Partner with PMs to ship experimentation tooling used by 45+ teams.',
+      },
+      {
+        id: makeId(),
+        jobTitle: 'Senior UI Engineer',
+        company: 'Northwind Labs',
+        location: 'Austin, TX',
+        startDate: 'Jan 2018',
+        endDate: 'Feb 2021',
+        isCurrent: false,
+        description:
+          '- Implemented streaming dashboards for IoT fleet metrics.\n- Lifted Lighthouse performance scores from 68 to 94.',
+      },
+    ],
+    education: [
+      {
+        id: makeId(),
+        degree: 'B.S. Computer Science',
+        institution: 'University of Washington',
+        location: 'Seattle, WA',
+        startYear: '2012',
+        endYear: '2016',
+        isCurrent: false,
+        description:
+          'Concentration in Human-Computer Interaction. Minor in Design.',
+      },
+    ],
+    projects: [
+      {
+        id: makeId(),
+        name: 'CaseBuilder',
+        role: 'Product Engineer',
+        techStack: 'React, Zustand, Tailwind',
+        description:
+          'Workflow builder for legal teams drafting repeatable case packets.',
+        achievements:
+          '- Cut drafting time by 60%\n- Adopted by 12 enterprise law firms within 6 months',
+        link: 'https://casebuilder.app',
+      },
+    ],
+    achievements: [
+      {
+        id: makeId(),
+        name: 'Grace Hopper Scholar',
+        organization: 'AnitaB.org',
+        date: '2023',
+        context:
+          'Selected for contributions to inclusive developer tooling initiatives.',
+      },
+    ],
+    publications: [
+      {
+        id: makeId(),
+        title: 'Design Systems that Scale',
+        venue: 'Frontend Futures Magazine',
+        year: '2024',
+        coAuthors: 'Ava Patel',
+        link: 'https://frontendfutures.dev/design-systems',
+      },
+    ],
+    talks: [
+      {
+        id: makeId(),
+        title: 'Measuring UX in Developer Tools',
+        event: 'React Summit',
+        date: 'Jun 2024',
+        role: 'Speaker',
+        locationOrLink: 'Amsterdam / livestream replay',
+      },
+    ],
+    volunteer: [
+      {
+        id: makeId(),
+        organization: 'Girls Who Code',
+        role: 'Mentor',
+        location: 'Remote',
+        startDate: '2022',
+        endDate: '',
+        isCurrent: true,
+        responsibilities:
+          '- Lead weekly sessions for twelve high-school students.\n- Designed project-based curriculum covering JS fundamentals.',
+      },
+    ],
+    openSource: [
+      {
+        id: makeId(),
+        name: 'Prisma Dashboard',
+        role: 'Maintainer',
+        techStack: 'Next.js, GraphQL, Prisma',
+        description: 'Extensible admin UI for inspecting Prisma schemas.',
+        achievements:
+          '- Added real-time query console\n- Introduced plugin API adopted by community contributors',
+        link: 'https://github.com/jordanrivera/prisma-dashboard',
+      },
+    ],
+    skills: [
+      { id: makeId(), name: 'TypeScript', level: 'Advanced' },
+      { id: makeId(), name: 'React', level: 'Advanced' },
+      { id: makeId(), name: 'Node.js', level: 'Professional' },
+      { id: makeId(), name: 'Design Systems', level: 'Advanced' },
+    ],
+    languages: [
+      { id: makeId(), name: 'English', level: 'Native' },
+      { id: makeId(), name: 'Spanish', level: 'Professional' },
+    ],
+    portfolio: [
+      {
+        id: makeId(),
+        label: 'Portfolio',
+        url: 'https://jordanrivera.dev',
+      },
+      {
+        id: makeId(),
+        label: 'GitHub',
+        url: 'https://github.com/jordanrivera',
+      },
+      {
+        id: makeId(),
+        label: 'LinkedIn',
+        url: 'https://www.linkedin.com/in/jordanrivera',
+      },
+    ],
+    customSections,
+    sectionsOrder: [
+      'personal',
+      'experience',
+      'projects',
+      'volunteer',
+      'education',
+      'achievements',
+      'opensource',
+      'publications',
+      'talks',
+      'skills',
+      'languages',
+      'portfolio',
+      ...customSectionIds,
+    ],
+  };
+};
+
+const validatePersonalInfo = (personalInfo: PersonalInfo) => {
+  const errors: string[] = [];
+  if (!personalInfo.fullName.trim()) {
+    errors.push('Full name is required.');
+  }
+  if (!personalInfo.email.trim()) {
+    errors.push('Email is required.');
+  } else {
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(personalInfo.email)) {
+      errors.push('Email format is invalid.');
+    }
+  }
+  return { isValid: errors.length === 0, errors };
+};
+
+const hasMeaningfulExperience = (experience: ExperienceEntry[]): boolean =>
+  experience.some((e) => e.jobTitle.trim() && e.company.trim());
+
+const hasMeaningfulEducation = (education: EducationEntry[]): boolean =>
+  education.some((e) => e.degree.trim() && e.institution.trim());
+
+const hasMeaningfulProjects = (projects: ProjectEntry[]): boolean =>
+  projects.some((p) => p.name.trim() && p.role.trim());
+
+const hasMeaningfulAchievements = (achievements: AchievementEntry[]): boolean =>
+  achievements.some((a) => a.name.trim() && a.organization.trim());
+
+const hasMeaningfulVolunteer = (volunteer: CvData['volunteer']): boolean =>
+  volunteer.some((v) => v.organization.trim() && v.role.trim());
+
+const sectionLabel: Record<CvSectionKey, string> = {
+  personal: 'Personal Info',
+  experience: 'Experience',
+  education: 'Education',
+  projects: 'Projects',
+  achievements: 'Achievements / Awards',
+  publications: 'Publications',
+  talks: 'Talks / Conferences',
+  volunteer: 'Volunteer Experience',
+  opensource: 'Open Source',
+  skills: 'Skills',
+  languages: 'Languages',
+  portfolio: 'Portfolio / Links',
+};
+
+const isCustomSectionId = (
+  sectionId: SectionId,
+): sectionId is `custom:${string}` => sectionId.startsWith('custom:');
+
+interface Toast {
+  id: number;
+  message: string;
+  type: 'success' | 'error' | 'info';
+}
+
+export const App: React.FC = () => {
+  const [mode, setMode] = useState<'landing' | 'editor'>('landing');
+  const [cv, setCv] = useState<CvData>(() => createInitialCv());
+  const [activeSection, setActiveSection] = useState<SectionId>('personal');
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [isPreparingPdf, setIsPreparingPdf] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [draggingSectionId, setDraggingSectionId] = useState<SectionId | null>(
+    null,
+  );
+  useEffect(() => {
+    window.fillForm = () => {
+      setMode('editor');
+      setCv(createSampleCv());
+      setActiveSection('experience');
+    };
+    return () => {
+      delete window.fillForm;
+    };
+  }, []);
+
+  const sectionStatuses = useMemo(() => {
+    const personalValidation = validatePersonalInfo(cv.personalInfo);
+    return {
+      personal: personalValidation.isValid ? 'valid' : personalValidation.errors.length > 0 ? 'incomplete' : 'empty',
+      experience: hasMeaningfulExperience(cv.experience)
+        ? 'valid'
+        : cv.experience.some((e) => e.jobTitle || e.company)
+        ? 'incomplete'
+        : 'empty',
+      education: hasMeaningfulEducation(cv.education)
+        ? 'valid'
+        : cv.education.some((e) => e.degree || e.institution)
+        ? 'incomplete'
+        : 'empty',
+      projects: hasMeaningfulProjects(cv.projects)
+        ? 'valid'
+        : cv.projects.some((p) => p.name || p.role)
+        ? 'incomplete'
+        : 'empty',
+      achievements: hasMeaningfulAchievements(cv.achievements)
+        ? 'valid'
+        : cv.achievements.some((a) => a.name || a.organization)
+        ? 'incomplete'
+        : 'empty',
+      publications:
+        cv.publications.length > 0
+          ? 'valid'
+          : 'empty',
+      talks:
+        cv.talks.length > 0
+          ? 'valid'
+          : 'empty',
+      volunteer: hasMeaningfulVolunteer(cv.volunteer)
+        ? 'valid'
+        : cv.volunteer.some((v) => v.organization || v.role)
+        ? 'incomplete'
+        : 'empty',
+      opensource:
+        cv.openSource.length > 0
+          ? 'valid'
+          : 'empty',
+      portfolio: cv.portfolio.length > 0 ? 'valid' : 'empty',
+      skills: cv.skills.length > 0 ? 'valid' : 'empty',
+      languages: cv.languages.length > 0 ? 'valid' : 'empty',
+    } as const;
+  }, [cv]);
+
+  const addToast = (message: string, type: Toast['type'] = 'info') => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 3000);
+  };
+
+  const handleCreateNew = () => {
+    setCv(createInitialCv());
+    setActiveSection('personal');
+    setMode('editor');
+  };
+
+  const handleAddCustomSection = () => {
+    const id = crypto.randomUUID();
+    setCv((prev) => ({
+      ...prev,
+      customSections: [
+        ...prev.customSections,
+        { id, title: 'New section', body: '' },
+      ],
+      sectionsOrder: [...prev.sectionsOrder, `custom:${id}`],
+    }));
+    setActiveSection(`custom:${id}`);
+  };
+
+  const reorderSections = (sourceId: SectionId, targetId: SectionId) => {
+    if (sourceId === targetId) return;
+    setCv((prev) => {
+      const order = [...prev.sectionsOrder];
+      const fromIndex = order.indexOf(sourceId);
+      const toIndex = order.indexOf(targetId);
+      if (fromIndex === -1 || toIndex === -1) return prev;
+      order.splice(fromIndex, 1);
+      order.splice(toIndex, 0, sourceId);
+      return { ...prev, sectionsOrder: order };
+    });
+  };
+
+  const handleDownloadJson = () => {
+    try {
+      const blob = new Blob([JSON.stringify(cv, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'my-cv.json';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      addToast('CV data downloaded as my-cv.json.', 'success');
+    } catch (error) {
+      console.error(error);
+      addToast('Could not generate JSON. Try again.', 'error');
+    }
+  };
+
+  const handleDownloadPdf = () => {
+    const personalValidation = validatePersonalInfo(cv.personalInfo);
+    if (!personalValidation.isValid) {
+      setValidationErrors([
+        ...personalValidation.errors.map((msg) => `Personal Info: ${msg}`),
+      ]);
+      setShowValidationModal(true);
+      return;
+    }
+
+    const warnings: string[] = [];
+    if (!hasMeaningfulExperience(cv.experience) && !hasMeaningfulEducation(cv.education)) {
+      warnings.push(
+        'Your CV does not include any experience or education yet. You can still export, but consider adding them.',
+      );
+    }
+    warnings.forEach((message) => addToast(message, 'info'));
+
+    setIsPreparingPdf(true);
+    setTimeout(() => {
+      window.print();
+      setIsPreparingPdf(false);
+      addToast("PDF ready. Use 'Save as PDF' in the dialog.", 'success');
+    }, 100);
+  };
+
+  const handlePhotoUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCv((prev) => ({
+        ...prev,
+        personalInfo: {
+          ...prev.personalInfo,
+          photoDataUrl: typeof reader.result === 'string' ? reader.result : null,
+        },
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const header = (
+    <header className="fixed inset-x-0 top-0 z-20 bg-white/80 backdrop-blur border-b border-gray-200 print:hidden">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className="text-sm text-gray-500 hover:text-gray-700"
+            onClick={() => {
+              if (
+                confirm(
+                  'Return to start? Your current CV will remain in this browser unless you clear it.',
+                )
+              ) {
+                setMode('landing');
+              }
+            }}
+          >
+            ← Back to start
+          </button>
+          <div className="h-6 w-px bg-gray-200" />
+          <div>
+            <div className="text-sm font-semibold text-gray-900">
+              Free CV Builder
+            </div>
+            <div className="text-xs text-gray-500">
+              Create and download your CV, fully in your browser.
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700 border border-yellow-200">
+            Unsaved changes
+          </span>
+          <button
+            type="button"
+            onClick={handleDownloadJson}
+            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+          >
+            Download JSON
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            disabled={isPreparingPdf}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
+          >
+            {isPreparingPdf ? 'Preparing PDF…' : 'Download PDF'}
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+
+  if (mode === 'landing') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
+        <div className="w-full max-w-lg rounded-2xl bg-white shadow-sm border border-slate-200 p-8 space-y-6">
+          <div className="space-y-2 text-center">
+            <h1 className="text-2xl font-semibold text-slate-900">
+              Free CV Builder
+            </h1>
+            <p className="text-sm text-slate-600">
+              Create and download your CV, fully in your browser.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={handleCreateNew}
+              className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+            >
+              Create new CV
+            </button>
+            <button
+              type="button"
+              disabled
+              className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-500 cursor-not-allowed"
+            >
+              Upload existing CV JSON (coming soon)
+            </button>
+          </div>
+          <p className="text-xs text-slate-500 text-center">
+            No sign-up, no server. Your data stays in your browser.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {header}
+      <main className="mx-auto flex max-w-6xl gap-4 px-4 pt-20 pb-8 print:block print:max-w-none print:px-0 print:pt-0">
+        {/* Sidebar */}
+        <aside className="w-56 shrink-0 space-y-4 pt-4 print:hidden">
+          <div>
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+              Sections
+            </h2>
+            <nav className="space-y-1">
+              {cv.sectionsOrder.map((id) => {
+                const label = isCustomSectionId(id)
+                  ? cv.customSections.find(
+                      (section) => `custom:${section.id}` === id,
+                    )?.title || 'Custom section'
+                  : sectionLabel[id as CvSectionKey];
+
+                let status: 'valid' | 'incomplete' | 'empty' = 'empty';
+                if (isCustomSectionId(id)) {
+                  const custom = cv.customSections.find(
+                    (section) => `custom:${section.id}` === id,
+                  );
+                  status = custom && custom.body.trim() ? 'valid' : 'empty';
+                } else {
+                  status = sectionStatuses[id as CvSectionKey];
+                }
+
+                const color =
+                  status === 'valid'
+                    ? 'bg-emerald-500'
+                    : status === 'incomplete'
+                    ? 'bg-amber-400'
+                    : 'bg-slate-300';
+
+                return (
+                  <div
+                    key={id}
+                    className={`flex items-center gap-1 rounded-md ${
+                      draggingSectionId === id ? 'opacity-60' : ''
+                    }`}
+                    draggable
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = 'move';
+                      setDraggingSectionId(id);
+                    }}
+                    onDragEnd={() => setDraggingSectionId(null)}
+                    onDragOver={(event) => {
+                      if (!draggingSectionId || draggingSectionId === id) return;
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = 'move';
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      if (!draggingSectionId || draggingSectionId === id) return;
+                      reorderSections(draggingSectionId, id);
+                      setDraggingSectionId(null);
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setActiveSection(id)}
+                      className={`flex flex-1 items-center justify-between rounded-md px-3 py-2 text-sm ${
+                        activeSection === id
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="truncate">{label}</span>
+                      <span className="flex items-center gap-1 text-xs">
+                        <span
+                          className={`h-2 w-2 rounded-full ${color}`}
+                          aria-hidden
+                        />
+                      </span>
+                    </button>
+                  </div>
+                );
+              })}
+            </nav>
+            <button
+              type="button"
+              onClick={handleAddCustomSection}
+              className="mt-3 inline-flex items-center gap-1 rounded-md border border-dashed border-slate-300 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+            >
+              <span>+ Add section</span>
+            </button>
+          </div>
+          <div className="rounded-md bg-slate-100 px-3 py-2 text-xs text-slate-600">
+            Auto-save to this browser is coming soon. For now, download JSON to keep a copy.
+          </div>
+        </aside>
+
+        {/* Form + Preview */}
+        <section className="flex flex-1 gap-4 pt-4 print:block">
+          {/* Form panel */}
+          <div className="w-1/2 space-y-4 print:hidden">
+            {activeSection === 'personal' && (
+              <PersonalInfoForm
+                personalInfo={cv.personalInfo}
+                onChange={(personalInfo) =>
+                  setCv((prev) => ({ ...prev, personalInfo }))
+                }
+                onPhotoUpload={handlePhotoUpload}
+              />
+            )}
+            {activeSection === 'experience' && (
+              <ExperienceForm
+                entries={cv.experience}
+                onChange={(experience) => setCv((prev) => ({ ...prev, experience }))}
+                createEmptyExperience={createEmptyExperience}
+              />
+            )}
+            {activeSection === 'volunteer' && (
+              <VolunteerForm
+                entries={cv.volunteer}
+                onChange={(volunteer) =>
+                  setCv((prev) => ({ ...prev, volunteer }))
+                }
+              />
+            )}
+            {activeSection === 'projects' && (
+              <ProjectsForm
+                entries={cv.projects}
+                onChange={(projects) => setCv((prev) => ({ ...prev, projects }))}
+                createEmptyProject={createEmptyProject}
+              />
+            )}
+            {activeSection === 'achievements' && (
+              <AchievementsForm
+                entries={cv.achievements}
+                onChange={(achievements) =>
+                  setCv((prev) => ({ ...prev, achievements }))
+                }
+                createEmptyAchievement={createEmptyAchievement}
+              />
+            )}
+            {activeSection === 'publications' && (
+              <PublicationsForm
+                entries={cv.publications}
+                onChange={(publications) =>
+                  setCv((prev) => ({ ...prev, publications }))
+                }
+              />
+            )}
+            {activeSection === 'talks' && (
+              <TalksForm
+                entries={cv.talks}
+                onChange={(talks) => setCv((prev) => ({ ...prev, talks }))}
+              />
+            )}
+            {activeSection === 'opensource' && (
+              <OpenSourceForm
+                entries={cv.openSource}
+                onChange={(openSource) =>
+                  setCv((prev) => ({ ...prev, openSource }))
+                }
+              />
+            )}
+            {activeSection === 'education' && (
+              <EducationForm
+                entries={cv.education}
+                onChange={(education) => setCv((prev) => ({ ...prev, education }))}
+                createEmptyEducation={createEmptyEducation}
+              />
+            )}
+            {activeSection === 'skills' && (
+              <SkillsForm
+                skills={cv.skills}
+                onChange={(skills) => setCv((prev) => ({ ...prev, skills }))}
+              />
+            )}
+            {activeSection === 'languages' && (
+              <LanguagesForm
+                languages={cv.languages}
+                onChange={(languages) =>
+                  setCv((prev) => ({ ...prev, languages }))
+                }
+              />
+            )}
+            {activeSection === 'portfolio' && (
+              <PortfolioForm
+                links={cv.portfolio}
+                onChange={(portfolio) =>
+                  setCv((prev) => ({ ...prev, portfolio }))
+                }
+              />
+            )}
+            {activeSection.startsWith('custom:') && (
+              <CustomSectionForm
+                section={
+                  cv.customSections.find(
+                    (section) => `custom:${section.id}` === activeSection,
+                  ) ?? {
+                    id: '',
+                    title: '',
+                    body: '',
+                  }
+                }
+                onChange={(updated) =>
+                  setCv((prev) => ({
+                    ...prev,
+                    customSections: prev.customSections.map((section) =>
+                      section.id === updated.id ? updated : section,
+                    ),
+                  }))
+                }
+                onDelete={() =>
+                  setCv((prev) => {
+                    const id = activeSection.replace('custom:', '');
+                    return {
+                      ...prev,
+                      customSections: prev.customSections.filter(
+                        (section) => section.id !== id,
+                      ),
+                      sectionsOrder: prev.sectionsOrder.filter(
+                        (sectionId) => sectionId !== activeSection,
+                      ),
+                    };
+                  })
+                }
+              />
+            )}
+          </div>
+
+          {/* Preview panel */}
+          <div className="w-1/2 print:w-full">
+            <div className="sticky top-20 print:static print:top-auto">
+              <div className="mb-2 flex items-baseline justify-between print:hidden">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Live preview
+                </h2>
+                <p className="text-[11px] text-slate-400">
+                  This layout is used for PDF export.
+                </p>
+              </div>
+              <div className="bg-slate-200 py-4 px-2 print:bg-transparent print:p-0">
+                <div className="mx-auto aspect-[1/1.4142] w-full max-w-full bg-white shadow-sm border border-slate-200 p-6 text-slate-900 print:mx-0 print:w-full print:max-w-none print:shadow-none print:border-0 print:max-h-none print:aspect-auto print:p-8">
+                  <CvPreview cv={cv} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Validation modal */}
+        {showValidationModal && (
+          <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/30">
+            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
+              <h2 className="mb-2 text-base font-semibold text-slate-900">
+                Complete required info
+              </h2>
+              <p className="mb-3 text-sm text-slate-600">
+                Fix the highlighted fields to generate a clean CV.
+              </p>
+              <ul className="mb-4 list-disc space-y-1 pl-5 text-sm text-slate-700">
+                {validationErrors.map((error) => (
+                  <li key={error}>{error}</li>
+                ))}
+              </ul>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  onClick={() => setShowValidationModal(false)}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700"
+                  onClick={() => {
+                    setActiveSection('personal');
+                    setShowValidationModal(false);
+                  }}
+                >
+                  Go to Personal Info
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Toasts */}
+        <div className="pointer-events-none fixed bottom-4 right-4 z-40 space-y-2">
+          {toasts.map((toast) => {
+            const base =
+              'pointer-events-auto flex items-center gap-2 rounded-md px-3 py-2 text-xs shadow-sm border';
+            const style =
+              toast.type === 'success'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                : toast.type === 'error'
+                ? 'bg-red-50 text-red-800 border-red-200'
+                : 'bg-slate-50 text-slate-800 border-slate-200';
+            return (
+              <div key={toast.id} className={`${base} ${style}`}>
+                <span>{toast.message}</span>
+              </div>
+            );
+          })}
+        </div>
+      </main>
+    </div>
+  );
+};

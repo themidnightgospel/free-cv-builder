@@ -1,0 +1,4 @@
+- Purpose: Single-page React + Vite CV builder that lets users enter section data (personal info, experience, custom sections, etc.) and preview/print a formatted resume entirely in the browser.
+- Tech stack: TypeScript, React 19 w/ hooks, Vite build/dev server, TailwindCSS for styling, react-markdown for rendering custom section bodies.
+- Structure: `src/App.tsx` holds application state, ordering, and renders sidebar/forms + preview; `src/components/` has individual form components (personal info, experience, education, custom sections, etc.) plus `CvPreview`; `src/types.ts` centralizes interfaces for CV data; `src/main.tsx` bootstraps React; Tailwind config + global styles in root.
+- Data model: `CvData` has arrays for each section and `sectionsOrder` to drive sidebar + rendering. Custom sections stored in `customSections` with ids/titles/bodies.

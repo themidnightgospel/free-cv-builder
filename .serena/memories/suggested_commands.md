@@ -1,0 +1,4 @@
+- Install deps: `npm install`
+- Start dev server (Vite + React Fast Refresh): `npm run dev`
+- Type-check + production build: `npm run build`
+- Preview production build locally: `npm run preview`
