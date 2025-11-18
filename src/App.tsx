@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowDownTrayIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type {
   CvData,
   CvSectionKey,
@@ -23,6 +24,7 @@ import { TalksForm } from './components/TalksForm';
 import { VolunteerForm } from './components/VolunteerForm';
 import { OpenSourceForm } from './components/OpenSourceForm';
 import { LanguagesForm } from './components/LanguagesForm';
+import { useConfirmDialog } from './components/ConfirmDialogProvider';
 
 declare global {
   interface Window {
@@ -404,6 +406,12 @@ const persistCurrentCvId = (id: string) => {
 const getCvDisplayName = (data: CvData): string =>
   data.personalInfo.fullName.trim() || 'Untitled CV';
 
+const createJsonFilename = (name?: string): string => {
+  const base = name?.trim().toLowerCase().replace(/[^a-z0-9]+/gi, '-') ?? '';
+  const sanitized = base.replace(/^-+|-+$/g, '') || 'my-cv';
+  return `${sanitized}.json`;
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
@@ -542,6 +550,8 @@ export const App: React.FC = () => {
     crypto.randomUUID(),
   );
   const [savedCvs, setSavedCvs] = useState<SavedCvRecord[]>([]);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const confirmDialog = useConfirmDialog();
   const defaultFontSettings: FontSettings = {
     fullName: 28,
     sectionTitle: 12,
@@ -649,6 +659,7 @@ export const App: React.FC = () => {
     }
     if (typeof window === 'undefined') return;
     if (!currentCvId) return;
+    setHasUnsavedChanges(true);
     if (saveTimeoutRef.current) {
       window.clearTimeout(saveTimeoutRef.current);
     }
@@ -674,6 +685,7 @@ export const App: React.FC = () => {
       writeSavedCvsToStorage(nextRecords);
       persistCurrentCvId(currentCvId);
       setSavedCvs(nextRecords);
+      setHasUnsavedChanges(false);
       saveTimeoutRef.current = null;
     }, 3000);
     return () => {
@@ -800,14 +812,14 @@ export const App: React.FC = () => {
     addToast(`Loaded ${record.name}.`, 'success');
   };
 
-  const handleDeleteSavedCv = (id: string, name: string) => {
-    if (
-      !confirm(
-        `Delete saved CV "${name}"? This only removes it from this browser.`,
-      )
-    ) {
-      return;
-    }
+  const handleDeleteSavedCv = async (id: string, name: string) => {
+    const confirmed = await confirmDialog({
+      title: 'Delete saved CV?',
+      message: `Delete "${name}" from this browser? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     setSavedCvs((prev) => {
       const next = prev.filter((record) => record.id !== id);
       writeSavedCvsToStorage(next);
@@ -847,24 +859,35 @@ export const App: React.FC = () => {
     });
   };
 
-  const handleDownloadJson = () => {
+  const downloadCvJson = (data: CvData, filenameHint?: string) => {
     try {
-      const blob = new Blob([JSON.stringify(cv, null, 2)], {
+      const filename = createJsonFilename(
+        filenameHint || getCvDisplayName(data),
+      );
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
         type: 'application/json',
       });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'my-cv.json';
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      addToast('CV data downloaded as my-cv.json.', 'success');
+      addToast(`CV data downloaded as ${filename}.`, 'success');
     } catch (error) {
       console.error(error);
       addToast('Could not generate JSON. Try again.', 'error');
     }
+  };
+
+  const handleDownloadJson = () => {
+    downloadCvJson(cv, getCvDisplayName(cv));
+  };
+
+  const handleDownloadSavedCv = (record: SavedCvRecord) => {
+    downloadCvJson(record.cv, record.name);
   };
 
   const handleDownloadPdf = () => {
@@ -921,12 +944,13 @@ export const App: React.FC = () => {
           <button
             type="button"
             className="text-sm text-gray-500 hover:text-gray-700"
-            onClick={() => {
-              if (
-                confirm(
-                  'Return to start? Your current CV will remain in this browser unless you clear it.',
-                )
-              ) {
+            onClick={async () => {
+              const confirmed = await confirmDialog({
+                title: 'Return to start?',
+                message:
+                  'Your current CV will remain stored in this browser unless you clear it.',
+              });
+              if (confirmed) {
                 setMode('landing');
               }
             }}
@@ -944,8 +968,14 @@ export const App: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700 border border-yellow-200">
-            Unsaved changes
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-medium border ${
+              hasUnsavedChanges
+                ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            }`}
+          >
+            {hasUnsavedChanges ? 'Unsaved changes' : 'Changes saved'}
           </span>
           <button
             type="button"
@@ -1003,8 +1033,8 @@ export const App: React.FC = () => {
             />
             {savedCvs.length > 0 && (
               <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Saved CVs
+                <p className="text-xs font-semibold tracking-wide text-slate-500">
+                  Saved CVs on this browser
                 </p>
                 <div className="space-y-2">
                   {[...savedCvs]
@@ -1032,17 +1062,28 @@ export const App: React.FC = () => {
                             {new Date(record.updatedAt).toLocaleTimeString()}
                           </p>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleDeleteSavedCv(record.id, record.name)
-                          }
-                          className="rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-                          aria-label={`Delete ${record.name}`}
-                          title="Delete saved CV"
-                        >
-                          🗑️
-                        </button>
+                        <div className="flex flex-col gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadSavedCv(record)}
+                            className="flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-2 text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                            aria-label={`Download ${record.name} as JSON`}
+                            title="Download JSON"
+                          >
+                            <ArrowDownTrayIcon className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleDeleteSavedCv(record.id, record.name)
+                            }
+                            className="flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-2 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                            aria-label={`Delete ${record.name}`}
+                            title="Delete saved CV"
+                          >
+                            <TrashIcon className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                 </div>

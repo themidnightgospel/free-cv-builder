@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ExperienceEntry } from '../types';
+import { useConfirmDialog } from './ConfirmDialogProvider';
 
 export interface ExperienceFormProps {
   entries: ExperienceEntry[];
@@ -12,6 +13,7 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
   onChange,
   createEmptyExperience,
 }) => {
+  const confirmDialog = useConfirmDialog();
   const updateEntry = (id: string, partial: Partial<ExperienceEntry>) => {
     onChange(entries.map((entry) => (entry.id === id ? { ...entry, ...partial } : entry)));
   };
@@ -25,15 +27,25 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
     onChange(copy);
   };
 
-  const deleteEntry = (index: number) => {
+  const deleteEntry = async (index: number) => {
     if (entries.length === 1) {
-      if (!confirm('Delete this experience entry? A new blank entry will be created.')) {
-        return;
-      }
+      const confirmed = await confirmDialog({
+        title: 'Delete experience entry?',
+        message: 'Delete this experience entry? A new blank entry will be created.',
+        confirmLabel: 'Delete',
+        tone: 'danger',
+      });
+      if (!confirmed) return;
       onChange([createEmptyExperience()]);
       return;
     }
-    if (!confirm('Delete this experience entry?')) return;
+    const confirmed = await confirmDialog({
+      title: 'Delete experience entry?',
+      message: 'Delete this experience entry?',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     const copy = [...entries];
     copy.splice(index, 1);
     onChange(copy);

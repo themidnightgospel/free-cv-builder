@@ -1,5 +1,6 @@
 import React from 'react';
 import type { CustomSection } from '../types';
+import { useConfirmDialog } from './ConfirmDialogProvider';
 
 export interface CustomSectionFormProps {
   section: CustomSection;
@@ -12,6 +13,7 @@ export const CustomSectionForm: React.FC<CustomSectionFormProps> = ({
   onChange,
   onDelete,
 }) => {
+  const confirmDialog = useConfirmDialog();
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
@@ -21,14 +23,17 @@ export const CustomSectionForm: React.FC<CustomSectionFormProps> = ({
         <button
           type="button"
           className="text-xs text-red-500 hover:text-red-600"
-          onClick={() => {
-            if (
-              confirm(
-                `Delete section "${section.title || 'Untitled section'}"?`,
-              )
-            ) {
-              onDelete();
-            }
+          onClick={async () => {
+            const confirmed = await confirmDialog({
+              title: 'Delete custom section?',
+              message: `Delete "${
+                section.title || 'Untitled section'
+              }" from your CV?`,
+              confirmLabel: 'Delete',
+              tone: 'danger',
+            });
+            if (!confirmed) return;
+            onDelete();
           }}
         >
           Delete section

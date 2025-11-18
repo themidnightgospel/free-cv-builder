@@ -1,5 +1,6 @@
 import React from 'react';
 import type { EducationEntry } from '../types';
+import { useConfirmDialog } from './ConfirmDialogProvider';
 
 export interface EducationFormProps {
   entries: EducationEntry[];
@@ -12,6 +13,7 @@ export const EducationForm: React.FC<EducationFormProps> = ({
   onChange,
   createEmptyEducation,
 }) => {
+  const confirmDialog = useConfirmDialog();
   const updateEntry = (id: string, partial: Partial<EducationEntry>) => {
     onChange(entries.map((entry) => (entry.id === id ? { ...entry, ...partial } : entry)));
   };
@@ -25,15 +27,25 @@ export const EducationForm: React.FC<EducationFormProps> = ({
     onChange(copy);
   };
 
-  const deleteEntry = (index: number) => {
+  const deleteEntry = async (index: number) => {
     if (entries.length === 1) {
-      if (!confirm('Delete this education entry? A new blank entry will be created.')) {
-        return;
-      }
+      const confirmed = await confirmDialog({
+        title: 'Delete education entry?',
+        message: 'Delete this education entry? A new blank entry will be created.',
+        confirmLabel: 'Delete',
+        tone: 'danger',
+      });
+      if (!confirmed) return;
       onChange([createEmptyEducation()]);
       return;
     }
-    if (!confirm('Delete this education entry?')) return;
+    const confirmed = await confirmDialog({
+      title: 'Delete education entry?',
+      message: 'Delete this education entry?',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     const copy = [...entries];
     copy.splice(index, 1);
     onChange(copy);

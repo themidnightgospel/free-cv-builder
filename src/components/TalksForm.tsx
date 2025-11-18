@@ -1,5 +1,6 @@
 import React from 'react';
 import type { TalkEntry } from '../types';
+import { useConfirmDialog } from './ConfirmDialogProvider';
 
 export interface TalksFormProps {
   entries: TalkEntry[];
@@ -7,6 +8,7 @@ export interface TalksFormProps {
 }
 
 export const TalksForm: React.FC<TalksFormProps> = ({ entries, onChange }) => {
+  const confirmDialog = useConfirmDialog();
   const updateEntry = (id: string, partial: Partial<TalkEntry>) => {
     onChange(
       entries.map((entry) => (entry.id === id ? { ...entry, ...partial } : entry)),
@@ -22,8 +24,14 @@ export const TalksForm: React.FC<TalksFormProps> = ({ entries, onChange }) => {
     onChange(copy);
   };
 
-  const deleteEntry = (index: number) => {
-    if (!confirm('Delete this talk / event?')) return;
+  const deleteEntry = async (index: number) => {
+    const confirmed = await confirmDialog({
+      title: 'Delete talk?',
+      message: 'Delete this talk or event?',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     const copy = [...entries];
     copy.splice(index, 1);
     onChange(copy);
@@ -177,4 +185,3 @@ export const TalksForm: React.FC<TalksFormProps> = ({ entries, onChange }) => {
     </div>
   );
 };
-

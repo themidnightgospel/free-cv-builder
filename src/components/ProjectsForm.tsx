@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ProjectEntry } from '../types';
+import { useConfirmDialog } from './ConfirmDialogProvider';
 
 export interface ProjectsFormProps {
   entries: ProjectEntry[];
@@ -12,6 +13,7 @@ export const ProjectsForm: React.FC<ProjectsFormProps> = ({
   onChange,
   createEmptyProject,
 }) => {
+  const confirmDialog = useConfirmDialog();
   const updateEntry = (id: string, partial: Partial<ProjectEntry>) => {
     onChange(
       entries.map((entry) => (entry.id === id ? { ...entry, ...partial } : entry)),
@@ -27,19 +29,25 @@ export const ProjectsForm: React.FC<ProjectsFormProps> = ({
     onChange(copy);
   };
 
-  const deleteEntry = (index: number) => {
+  const deleteEntry = async (index: number) => {
     if (entries.length === 1) {
-      if (
-        !confirm(
-          'Delete this project entry? A new blank entry will be created.',
-        )
-      ) {
-        return;
-      }
+      const confirmed = await confirmDialog({
+        title: 'Delete project entry?',
+        message: 'Delete this project entry? A new blank entry will be created.',
+        confirmLabel: 'Delete',
+        tone: 'danger',
+      });
+      if (!confirmed) return;
       onChange([createEmptyProject()]);
       return;
     }
-    if (!confirm('Delete this project entry?')) return;
+    const confirmed = await confirmDialog({
+      title: 'Delete project entry?',
+      message: 'Delete this project entry?',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     const copy = [...entries];
     copy.splice(index, 1);
     onChange(copy);
@@ -195,4 +203,3 @@ export const ProjectsForm: React.FC<ProjectsFormProps> = ({
     </div>
   );
 };
-

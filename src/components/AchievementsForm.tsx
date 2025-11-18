@@ -1,5 +1,6 @@
 import React from 'react';
 import type { AchievementEntry } from '../types';
+import { useConfirmDialog } from './ConfirmDialogProvider';
 
 export interface AchievementsFormProps {
   entries: AchievementEntry[];
@@ -12,6 +13,7 @@ export const AchievementsForm: React.FC<AchievementsFormProps> = ({
   onChange,
   createEmptyAchievement,
 }) => {
+  const confirmDialog = useConfirmDialog();
   const updateEntry = (id: string, partial: Partial<AchievementEntry>) => {
     onChange(
       entries.map((entry) => (entry.id === id ? { ...entry, ...partial } : entry)),
@@ -27,19 +29,25 @@ export const AchievementsForm: React.FC<AchievementsFormProps> = ({
     onChange(copy);
   };
 
-  const deleteEntry = (index: number) => {
+  const deleteEntry = async (index: number) => {
     if (entries.length === 1) {
-      if (
-        !confirm(
-          'Delete this achievement/award? A new blank entry will be created.',
-        )
-      ) {
-        return;
-      }
+      const confirmed = await confirmDialog({
+        title: 'Delete achievement?',
+        message: 'Delete this achievement? A new blank entry will be created.',
+        confirmLabel: 'Delete',
+        tone: 'danger',
+      });
+      if (!confirmed) return;
       onChange([createEmptyAchievement()]);
       return;
     }
-    if (!confirm('Delete this achievement/award?')) return;
+    const confirmed = await confirmDialog({
+      title: 'Delete achievement?',
+      message: 'Delete this achievement or award?',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     const copy = [...entries];
     copy.splice(index, 1);
     onChange(copy);
@@ -168,4 +176,3 @@ export const AchievementsForm: React.FC<AchievementsFormProps> = ({
     </div>
   );
 };
-

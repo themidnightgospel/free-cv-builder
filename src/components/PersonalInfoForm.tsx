@@ -32,9 +32,6 @@ export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-slate-900">Personal Info</h2>
-        <p className="text-xs text-slate-500">
-          This appears at the top of your CV.
-        </p>
       </div>
       <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="space-y-3">

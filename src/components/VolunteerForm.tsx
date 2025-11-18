@@ -1,5 +1,6 @@
 import React from 'react';
 import type { VolunteerExperienceEntry } from '../types';
+import { useConfirmDialog } from './ConfirmDialogProvider';
 
 export interface VolunteerFormProps {
   entries: VolunteerExperienceEntry[];
@@ -10,6 +11,7 @@ export const VolunteerForm: React.FC<VolunteerFormProps> = ({
   entries,
   onChange,
 }) => {
+  const confirmDialog = useConfirmDialog();
   const updateEntry = (
     id: string,
     partial: Partial<VolunteerExperienceEntry>,
@@ -28,8 +30,14 @@ export const VolunteerForm: React.FC<VolunteerFormProps> = ({
     onChange(copy);
   };
 
-  const deleteEntry = (index: number) => {
-    if (!confirm('Delete this volunteer experience?')) return;
+  const deleteEntry = async (index: number) => {
+    const confirmed = await confirmDialog({
+      title: 'Delete volunteer experience?',
+      message: 'Delete this volunteer experience?',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     const copy = [...entries];
     copy.splice(index, 1);
     onChange(copy);
@@ -210,4 +218,3 @@ export const VolunteerForm: React.FC<VolunteerFormProps> = ({
     </div>
   );
 };
-

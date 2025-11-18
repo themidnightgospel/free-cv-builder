@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ProjectEntry } from '../types';
+import { useConfirmDialog } from './ConfirmDialogProvider';
 
 export interface OpenSourceFormProps {
   entries: ProjectEntry[];
@@ -10,6 +11,7 @@ export const OpenSourceForm: React.FC<OpenSourceFormProps> = ({
   entries,
   onChange,
 }) => {
+  const confirmDialog = useConfirmDialog();
   const updateEntry = (id: string, partial: Partial<ProjectEntry>) => {
     onChange(
       entries.map((entry) => (entry.id === id ? { ...entry, ...partial } : entry)),
@@ -25,8 +27,14 @@ export const OpenSourceForm: React.FC<OpenSourceFormProps> = ({
     onChange(copy);
   };
 
-  const deleteEntry = (index: number) => {
-    if (!confirm('Delete this open source contribution?')) return;
+  const deleteEntry = async (index: number) => {
+    const confirmed = await confirmDialog({
+      title: 'Delete contribution?',
+      message: 'Delete this open source contribution?',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     const copy = [...entries];
     copy.splice(index, 1);
     onChange(copy);
@@ -165,4 +173,3 @@ export const OpenSourceForm: React.FC<OpenSourceFormProps> = ({
     </div>
   );
 };
-

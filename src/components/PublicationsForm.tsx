@@ -1,5 +1,6 @@
 import React from 'react';
 import type { PublicationEntry } from '../types';
+import { useConfirmDialog } from './ConfirmDialogProvider';
 
 export interface PublicationsFormProps {
   entries: PublicationEntry[];
@@ -10,6 +11,7 @@ export const PublicationsForm: React.FC<PublicationsFormProps> = ({
   entries,
   onChange,
 }) => {
+  const confirmDialog = useConfirmDialog();
   const updateEntry = (id: string, partial: Partial<PublicationEntry>) => {
     onChange(
       entries.map((entry) => (entry.id === id ? { ...entry, ...partial } : entry)),
@@ -25,8 +27,14 @@ export const PublicationsForm: React.FC<PublicationsFormProps> = ({
     onChange(copy);
   };
 
-  const deleteEntry = (index: number) => {
-    if (!confirm('Delete this publication?')) return;
+  const deleteEntry = async (index: number) => {
+    const confirmed = await confirmDialog({
+      title: 'Delete publication?',
+      message: 'Delete this publication?',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     const copy = [...entries];
     copy.splice(index, 1);
     onChange(copy);
@@ -176,4 +184,3 @@ export const PublicationsForm: React.FC<PublicationsFormProps> = ({
     </div>
   );
 };
-
