@@ -726,7 +726,7 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50">
       {header}
-      <main className="mx-auto max-w-6xl px-4 pt-20 pb-8 print:block print:max-w-none print:px-0 print:pt-0">
+      <main className="mx-auto max-w-6xl px-4 pt-20 pb-8 print:block print:max-w-none print:px-0 print:pt-0 print:pb-0">
         <div className="mb-4 flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 p-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 shadow-sm print:hidden">
           <button
             type="button"
@@ -1044,7 +1044,7 @@ export const App: React.FC = () => {
         <div
           className={`mt-4 ${
             activeWorkspaceView === 'preview' ? 'block' : 'hidden'
-          } print:block`}
+          } print:block print:mt-0`}
         >
           <div className="mx-auto max-w-4xl">
             <div className="sticky top-20 print:static print:top-auto">
@@ -1104,7 +1104,7 @@ export const App: React.FC = () => {
         )}
 
         {/* Toasts */}
-        <div className="pointer-events-none fixed bottom-4 right-4 z-40 space-y-2">
+        <div className="pointer-events-none fixed bottom-4 right-4 z-40 space-y-2 print:hidden">
           {toasts.map((toast) => {
             const base =
               'pointer-events-auto flex items-center gap-2 rounded-md px-3 py-2 text-xs shadow-sm border';

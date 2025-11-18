@@ -43,6 +43,8 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
   const [isPrinting, setIsPrinting] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const pageIndexRef = useRef(0);
+  const pendingPrintPageRef = useRef<number | null>(null);
 
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
@@ -89,6 +91,9 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
 
   const widthRatio = displayWidth / PRINT_PAGE_WIDTH || 1;
   const printContentHeight = displayContentHeight / widthRatio;
+  useEffect(() => {
+    pageIndexRef.current = pageIndex;
+  }, [pageIndex]);
 
   useEffect(() => {
     const totalPages =
@@ -103,23 +108,41 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const handleBeforePrint = () => setIsPrinting(true);
-    const handleAfterPrint = () => setIsPrinting(false);
-    window.addEventListener('beforeprint', handleBeforePrint);
-    window.addEventListener('afterprint', handleAfterPrint);
+    const prepareForPrint = () => {
+      if (pendingPrintPageRef.current === null) {
+        pendingPrintPageRef.current = pageIndexRef.current;
+      }
+      setPageIndex(0);
+      setIsPrinting(true);
+    };
+    const cleanupAfterPrint = () => {
+      setIsPrinting(false);
+      if (pendingPrintPageRef.current !== null) {
+        setPageIndex(pendingPrintPageRef.current);
+        pendingPrintPageRef.current = null;
+      }
+    };
+
+    window.addEventListener('beforeprint', prepareForPrint);
+    window.addEventListener('afterprint', cleanupAfterPrint);
 
     let mediaQuery: MediaQueryList | null = null;
     let handleChange: ((event: MediaQueryListEvent) => void) | null = null;
     if (typeof window.matchMedia === 'function') {
       mediaQuery = window.matchMedia('print');
-      handleChange = (event: MediaQueryListEvent) =>
-        setIsPrinting(event.matches);
+      handleChange = (event: MediaQueryListEvent) => {
+        if (event.matches) {
+          prepareForPrint();
+        } else {
+          cleanupAfterPrint();
+        }
+      };
       mediaQuery.addEventListener('change', handleChange);
     }
 
     return () => {
-      window.removeEventListener('beforeprint', handleBeforePrint);
-      window.removeEventListener('afterprint', handleAfterPrint);
+      window.removeEventListener('beforeprint', prepareForPrint);
+      window.removeEventListener('afterprint', cleanupAfterPrint);
       if (mediaQuery && handleChange) {
         mediaQuery.removeEventListener('change', handleChange);
       }

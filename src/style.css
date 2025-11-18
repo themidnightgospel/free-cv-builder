@@ -18,8 +18,8 @@
   }
 
   .cv-preview-content {
-    font-size: 1rem;
-    line-height: 1.65;
+    transform: none !important;
+    height: auto !important;
   }
 }
 
