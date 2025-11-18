@@ -28,7 +28,6 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv }) => {
     openSource,
     skills,
     languages,
-    portfolio,
     customSections,
     sectionsOrder,
   } = cv;
@@ -192,7 +191,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv }) => {
             )}
             {personalInfo.website && (
               <p className="break-all">
-                <span className="font-medium text-slate-700">Website:</span>{' '}
+                <span className="font-medium text-slate-700">Portfolio:</span>{' '}
                 {personalInfo.website}
               </p>
             )}
@@ -646,33 +645,6 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv }) => {
                         >
                           {language.name} – {language.level}
                         </span>
-                      ))}
-                    </div>
-                  )}
-                </section>
-              );
-            }
-
-            if (id === 'portfolio') {
-              return (
-                <section key="portfolio">
-                  <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                    Portfolio / Links
-                  </h2>
-                  {portfolio.length === 0 ? (
-                    <p className="text-[11px] text-slate-400">
-                      Add portfolio links to show them here.
-                    </p>
-                  ) : (
-                    <div className="space-y-1">
-                      {portfolio.map((link) => (
-                        <p
-                          key={link.id}
-                          className="text-[11px] text-slate-700 break-all"
-                        >
-                          <span className="font-semibold">{link.label}:</span>{' '}
-                          {link.url}
-                        </p>
                       ))}
                     </div>
                   )}

@@ -9,8 +9,7 @@ export type CvSectionKey =
   | 'volunteer'
   | 'opensource'
   | 'skills'
-  | 'languages'
-  | 'portfolio';
+  | 'languages';
 
 export type SectionId = CvSectionKey | `custom:${string}`;
 
@@ -116,12 +115,6 @@ export interface Language {
   level: LanguageLevel;
 }
 
-export interface PortfolioLink {
-  id: string;
-  label: string;
-  url: string;
-}
-
 export interface CustomSection {
   id: string;
   title: string;
@@ -140,7 +133,6 @@ export interface CvData {
   openSource: ProjectEntry[];
   skills: Skill[];
   languages: Language[];
-  portfolio: PortfolioLink[];
   customSections: CustomSection[];
   /**
    * Controls order of sections in the UI and preview.

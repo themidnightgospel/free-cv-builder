@@ -21,7 +21,6 @@ import { PublicationsForm } from './components/PublicationsForm';
 import { TalksForm } from './components/TalksForm';
 import { VolunteerForm } from './components/VolunteerForm';
 import { OpenSourceForm } from './components/OpenSourceForm';
-import { PortfolioForm } from './components/PortfolioForm';
 import { LanguagesForm } from './components/LanguagesForm';
 
 declare global {
@@ -94,7 +93,6 @@ const createInitialCv = (): CvData => ({
   openSource: [],
   skills: [],
   languages: [],
-  portfolio: [],
   customSections: [],
   sectionsOrder: [
     'personal',
@@ -108,7 +106,6 @@ const createInitialCv = (): CvData => ({
     'talks',
     'skills',
     'languages',
-    'portfolio',
   ],
 });
 
@@ -168,6 +165,72 @@ const createSampleCv = (): CvData => {
         isCurrent: false,
         description:
           '- Implemented streaming dashboards for IoT fleet metrics.\n- Lifted Lighthouse performance scores from 68 to 94.',
+      },
+      {
+        id: makeId(),
+        jobTitle: 'Frontend Chapter Lead',
+        company: 'Summit HR',
+        location: 'Denver, CO',
+        startDate: 'Mar 2016',
+        endDate: 'Dec 2017',
+        isCurrent: false,
+        description:
+          '- Led a guild of 14 engineers focusing on design system adoption.\n- Shipped internal UI kit used by recruiting pods worldwide.',
+      },
+      {
+        id: makeId(),
+        jobTitle: 'Product Engineer',
+        company: 'Beacon CRM',
+        location: 'Remote',
+        startDate: 'May 2014',
+        endDate: 'Feb 2016',
+        isCurrent: false,
+        description:
+          '- Built reporting dashboards that increased CSAT visibility.\n- Partnered with PMs to run weekly customer feedback sessions.',
+      },
+      {
+        id: makeId(),
+        jobTitle: 'UI Engineer II',
+        company: 'Hudson Analytics',
+        location: 'Chicago, IL',
+        startDate: 'Jun 2012',
+        endDate: 'Apr 2014',
+        isCurrent: false,
+        description:
+          '- Migrated legacy Backbone flows to React without downtime.\n- Authored accessibility checklist adopted across the org.',
+      },
+      {
+        id: makeId(),
+        jobTitle: 'Frontend Engineer',
+        company: 'Brightside Media',
+        location: 'Seattle, WA',
+        startDate: 'Jul 2010',
+        endDate: 'May 2012',
+        isCurrent: false,
+        description:
+          '- Created marketing landing page generator powering 200+ launches.\n- Introduced performance budgets and bundle analysis tooling.',
+      },
+      {
+        id: makeId(),
+        jobTitle: 'Web Developer',
+        company: 'PixelSmith Studio',
+        location: 'Portland, OR',
+        startDate: 'Jun 2009',
+        endDate: 'Jun 2010',
+        isCurrent: false,
+        description:
+          '- Built client microsites with custom CMS widgets.\n- Mentored two interns on semantic HTML and CSS architecture.',
+      },
+      {
+        id: makeId(),
+        jobTitle: 'Junior Developer',
+        company: 'InnoTech Labs',
+        location: 'San Diego, CA',
+        startDate: 'Aug 2007',
+        endDate: 'May 2009',
+        isCurrent: false,
+        description:
+          '- Coded UI components for medical device dashboards.\n- Wrote regression suites covering mission-critical workflows.',
       },
     ],
     education: [
@@ -261,23 +324,6 @@ const createSampleCv = (): CvData => {
       { id: makeId(), name: 'English', level: 'Native' },
       { id: makeId(), name: 'Spanish', level: 'Professional' },
     ],
-    portfolio: [
-      {
-        id: makeId(),
-        label: 'Portfolio',
-        url: 'https://jordanrivera.dev',
-      },
-      {
-        id: makeId(),
-        label: 'GitHub',
-        url: 'https://github.com/jordanrivera',
-      },
-      {
-        id: makeId(),
-        label: 'LinkedIn',
-        url: 'https://www.linkedin.com/in/jordanrivera',
-      },
-    ],
     customSections,
     sectionsOrder: [
       'personal',
@@ -291,7 +337,6 @@ const createSampleCv = (): CvData => {
       'talks',
       'skills',
       'languages',
-      'portfolio',
       ...customSectionIds,
     ],
   };
@@ -340,7 +385,6 @@ const sectionLabel: Record<CvSectionKey, string> = {
   opensource: 'Open Source',
   skills: 'Skills',
   languages: 'Languages',
-  portfolio: 'Portfolio / Links',
 };
 
 const isCustomSectionId = (
@@ -364,6 +408,9 @@ export const App: React.FC = () => {
   const [draggingSectionId, setDraggingSectionId] = useState<SectionId | null>(
     null,
   );
+  const [activeWorkspaceView, setActiveWorkspaceView] = useState<
+    'sections' | 'preview'
+  >('sections');
   useEffect(() => {
     window.fillForm = () => {
       setMode('editor');
@@ -416,7 +463,6 @@ export const App: React.FC = () => {
         cv.openSource.length > 0
           ? 'valid'
           : 'empty',
-      portfolio: cv.portfolio.length > 0 ? 'valid' : 'empty',
       skills: cv.skills.length > 0 ? 'valid' : 'empty',
       languages: cv.languages.length > 0 ? 'valid' : 'empty',
     } as const;
@@ -500,10 +546,17 @@ export const App: React.FC = () => {
     }
     warnings.forEach((message) => addToast(message, 'info'));
 
+    const originalTitle = document.title;
+    const normalizedName =
+      cv.personalInfo.fullName.trim().toLowerCase().replace(/\s+/g, '-') ||
+      'my-cv';
+    document.title = `${normalizedName}-cv`;
+
     setIsPreparingPdf(true);
     setTimeout(() => {
       window.print();
       setIsPreparingPdf(false);
+      document.title = originalTitle;
       addToast("PDF ready. Use 'Save as PDF' in the dialog.", 'success');
     }, 100);
   };
@@ -614,100 +667,128 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50">
       {header}
-      <main className="mx-auto flex max-w-6xl gap-4 px-4 pt-20 pb-8 print:block print:max-w-none print:px-0 print:pt-0">
-        {/* Sidebar */}
-        <aside className="w-56 shrink-0 space-y-4 pt-4 print:hidden">
-          <div>
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
-              Sections
-            </h2>
-            <nav className="space-y-1">
-              {cv.sectionsOrder.map((id) => {
-                const label = isCustomSectionId(id)
-                  ? cv.customSections.find(
-                      (section) => `custom:${section.id}` === id,
-                    )?.title || 'Custom section'
-                  : sectionLabel[id as CvSectionKey];
+      <main className="mx-auto max-w-6xl px-4 pt-20 pb-8 print:block print:max-w-none print:px-0 print:pt-0">
+        <div className="mb-4 flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 p-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 shadow-sm print:hidden">
+          <button
+            type="button"
+            onClick={() => setActiveWorkspaceView('sections')}
+            className={`flex-1 rounded-full px-4 py-2 transition ${
+              activeWorkspaceView === 'sections'
+                ? 'bg-slate-900 text-white'
+                : 'bg-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            CV Builder
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveWorkspaceView('preview')}
+            className={`flex-1 rounded-full px-4 py-2 transition ${
+              activeWorkspaceView === 'preview'
+                ? 'bg-slate-900 text-white'
+                : 'bg-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            Live preview
+          </button>
+        </div>
 
-                let status: 'valid' | 'incomplete' | 'empty' = 'empty';
-                if (isCustomSectionId(id)) {
-                  const custom = cv.customSections.find(
-                    (section) => `custom:${section.id}` === id,
-                  );
-                  status = custom && custom.body.trim() ? 'valid' : 'empty';
-                } else {
-                  status = sectionStatuses[id as CvSectionKey];
-                }
+        {activeWorkspaceView === 'sections' && (
+          <div className="flex gap-4 print:hidden">
+            {/* Sidebar */}
+            <aside className="w-56 shrink-0 space-y-4 pt-4 print:hidden">
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                  Sections
+                </h2>
+                <nav className="space-y-1">
+                  {cv.sectionsOrder.map((id) => {
+                    const label = isCustomSectionId(id)
+                      ? cv.customSections.find(
+                          (section) => `custom:${section.id}` === id,
+                        )?.title || 'Custom section'
+                      : sectionLabel[id as CvSectionKey];
 
-                const color =
-                  status === 'valid'
-                    ? 'bg-emerald-500'
-                    : status === 'incomplete'
-                    ? 'bg-amber-400'
-                    : 'bg-slate-300';
+                    let status: 'valid' | 'incomplete' | 'empty' = 'empty';
+                    if (isCustomSectionId(id)) {
+                      const custom = cv.customSections.find(
+                        (section) => `custom:${section.id}` === id,
+                      );
+                      status = custom && custom.body.trim() ? 'valid' : 'empty';
+                    } else {
+                      status = sectionStatuses[id as CvSectionKey];
+                    }
 
-                return (
-                  <div
-                    key={id}
-                    className={`flex items-center gap-1 rounded-md ${
-                      draggingSectionId === id ? 'opacity-60' : ''
-                    }`}
-                    draggable
-                    onDragStart={(event) => {
-                      event.dataTransfer.effectAllowed = 'move';
-                      setDraggingSectionId(id);
-                    }}
-                    onDragEnd={() => setDraggingSectionId(null)}
-                    onDragOver={(event) => {
-                      if (!draggingSectionId || draggingSectionId === id) return;
-                      event.preventDefault();
-                      event.dataTransfer.dropEffect = 'move';
-                    }}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      if (!draggingSectionId || draggingSectionId === id) return;
-                      reorderSections(draggingSectionId, id);
-                      setDraggingSectionId(null);
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setActiveSection(id)}
-                      className={`flex flex-1 items-center justify-between rounded-md px-3 py-2 text-sm ${
-                        activeSection === id
-                          ? 'bg-slate-900 text-white'
-                          : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      <span className="truncate">{label}</span>
-                      <span className="flex items-center gap-1 text-xs">
-                        <span
-                          className={`h-2 w-2 rounded-full ${color}`}
-                          aria-hidden
-                        />
-                      </span>
-                    </button>
-                  </div>
-                );
-              })}
-            </nav>
-            <button
-              type="button"
-              onClick={handleAddCustomSection}
-              className="mt-3 inline-flex items-center gap-1 rounded-md border border-dashed border-slate-300 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
-            >
-              <span>+ Add section</span>
-            </button>
-          </div>
-          <div className="rounded-md bg-slate-100 px-3 py-2 text-xs text-slate-600">
-            Auto-save to this browser is coming soon. For now, download JSON to keep a copy.
-          </div>
-        </aside>
+                    const color =
+                      status === 'valid'
+                        ? 'bg-emerald-500'
+                        : status === 'incomplete'
+                        ? 'bg-amber-400'
+                        : 'bg-slate-300';
 
-        {/* Form + Preview */}
-        <section className="flex flex-1 gap-4 pt-4 print:block">
-          {/* Form panel */}
-          <div className="w-1/2 space-y-4 print:hidden">
+                    return (
+                      <div
+                        key={id}
+                        className={`flex items-center gap-1 rounded-md ${
+                          draggingSectionId === id ? 'opacity-60' : ''
+                        }`}
+                        draggable
+                        onDragStart={(event) => {
+                          event.dataTransfer.effectAllowed = 'move';
+                          setDraggingSectionId(id);
+                        }}
+                        onDragEnd={() => setDraggingSectionId(null)}
+                        onDragOver={(event) => {
+                          if (!draggingSectionId || draggingSectionId === id)
+                            return;
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = 'move';
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          if (!draggingSectionId || draggingSectionId === id)
+                            return;
+                          reorderSections(draggingSectionId, id);
+                          setDraggingSectionId(null);
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setActiveSection(id)}
+                          className={`flex flex-1 items-center justify-between rounded-md px-3 py-2 text-sm ${
+                            activeSection === id
+                              ? 'bg-slate-900 text-white'
+                              : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span className="truncate">{label}</span>
+                          <span className="flex items-center gap-1 text-xs">
+                            <span
+                              className={`h-2 w-2 rounded-full ${color}`}
+                              aria-hidden
+                            />
+                          </span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </nav>
+                <button
+                  type="button"
+                  onClick={handleAddCustomSection}
+                  className="mt-3 inline-flex items-center gap-1 rounded-md border border-dashed border-slate-300 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                >
+                  <span>+ Add section</span>
+                </button>
+              </div>
+              <div className="rounded-md bg-slate-100 px-3 py-2 text-xs text-slate-600">
+                Auto-save to this browser is coming soon. For now, download JSON to keep a copy.
+              </div>
+            </aside>
+
+            {/* Form panel */}
+            <section className="flex flex-1 pt-4">
+              <div className="flex-1 space-y-4 print:hidden">
             {activeSection === 'personal' && (
               <PersonalInfoForm
                 personalInfo={cv.personalInfo}
@@ -791,14 +872,6 @@ export const App: React.FC = () => {
                 }
               />
             )}
-            {activeSection === 'portfolio' && (
-              <PortfolioForm
-                links={cv.portfolio}
-                onChange={(portfolio) =>
-                  setCv((prev) => ({ ...prev, portfolio }))
-                }
-              />
-            )}
             {activeSection.startsWith('custom:') && (
               <CustomSectionForm
                 section={
@@ -835,9 +908,17 @@ export const App: React.FC = () => {
               />
             )}
           </div>
+        </section>
+        </div>
+        )}
 
-          {/* Preview panel */}
-          <div className="w-1/2 print:w-full">
+        {/* Live preview */}
+        <div
+          className={`mt-4 ${
+            activeWorkspaceView === 'preview' ? 'block' : 'hidden'
+          } print:block`}
+        >
+          <div className="mx-auto max-w-4xl">
             <div className="sticky top-20 print:static print:top-auto">
               <div className="mb-2 flex items-baseline justify-between print:hidden">
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -848,13 +929,13 @@ export const App: React.FC = () => {
                 </p>
               </div>
               <div className="bg-slate-200 py-4 px-2 print:bg-transparent print:p-0">
-                <div className="mx-auto aspect-[1/1.4142] w-full max-w-full bg-white shadow-sm border border-slate-200 p-6 text-slate-900 print:mx-0 print:w-full print:max-w-none print:shadow-none print:border-0 print:max-h-none print:aspect-auto print:p-8">
+                <div className="mx-auto aspect-[1/1.4142] w-full max-w-full bg-white shadow-sm border border-slate-200 px-8 py-6 text-slate-900 print:mx-0 print:w-full print:max-w-none print:shadow-none print:border-0 print:max-h-none print:aspect-auto print:p-8">
                   <CvPreview cv={cv} />
                 </div>
               </div>
             </div>
           </div>
-        </section>
+        </div>
 
         {/* Validation modal */}
         {showValidationModal && (
