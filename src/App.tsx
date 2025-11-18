@@ -343,6 +343,67 @@ const createSampleCv = (): CvData => {
   };
 };
 
+const SAVED_CVS_STORAGE_KEY = 'freeCvBuilder:savedCvFiles';
+const CURRENT_CV_ID_STORAGE_KEY = 'freeCvBuilder:currentCvId';
+
+interface SavedCvRecord {
+  id: string;
+  name: string;
+  updatedAt: number;
+  cv: CvData;
+}
+
+const readSavedCvsFromStorage = (): SavedCvRecord[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(SAVED_CVS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((entry) => {
+        if (
+          !isRecord(entry) ||
+          typeof entry.id !== 'string' ||
+          typeof entry.name !== 'string' ||
+          typeof entry.updatedAt !== 'number' ||
+          !isRecord(entry.cv)
+        ) {
+          return null;
+        }
+        return entry as unknown as SavedCvRecord;
+      })
+      .filter((entry): entry is SavedCvRecord => Boolean(entry));
+  } catch (error) {
+    console.error('Failed to read saved CVs', error);
+    return [];
+  }
+};
+
+const writeSavedCvsToStorage = (records: SavedCvRecord[]) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(
+      SAVED_CVS_STORAGE_KEY,
+      JSON.stringify(records),
+    );
+  } catch (error) {
+    console.error('Failed to persist CVs', error);
+  }
+};
+
+const persistCurrentCvId = (id: string) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(CURRENT_CV_ID_STORAGE_KEY, id);
+  } catch (error) {
+    console.error('Failed to store current CV id', error);
+  }
+};
+
+const getCvDisplayName = (data: CvData): string =>
+  data.personalInfo.fullName.trim() || 'Untitled CV';
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
@@ -477,6 +538,10 @@ export const App: React.FC = () => {
   const [activeWorkspaceView, setActiveWorkspaceView] = useState<
     'sections' | 'preview'
   >('sections');
+  const [currentCvId, setCurrentCvId] = useState<string>(() =>
+    crypto.randomUUID(),
+  );
+  const [savedCvs, setSavedCvs] = useState<SavedCvRecord[]>([]);
   const defaultFontSettings: FontSettings = {
     fullName: 28,
     sectionTitle: 12,
@@ -487,6 +552,8 @@ export const App: React.FC = () => {
     ...defaultFontSettings,
   });
   const jsonUploadInputRef = useRef<HTMLInputElement>(null);
+  const saveTimeoutRef = useRef<number | null>(null);
+  const skipInitialPersistRef = useRef(true);
   const fontControls: {
     key: keyof FontSettings;
     label: string;
@@ -538,14 +605,84 @@ export const App: React.FC = () => {
   };
   useEffect(() => {
     window.fillForm = () => {
+      const newId = crypto.randomUUID();
+      setCurrentCvId(newId);
+      persistCurrentCvId(newId);
       setMode('editor');
       setCv(createSampleCv());
       setActiveSection('experience');
+      setActiveWorkspaceView('sections');
     };
     return () => {
       delete window.fillForm;
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const storedRecords = readSavedCvsFromStorage();
+    setSavedCvs(storedRecords);
+    const fallbackId =
+      [...storedRecords].sort((a, b) => b.updatedAt - a.updatedAt)[0]?.id ||
+      null;
+    const preferredId =
+      window.localStorage.getItem(CURRENT_CV_ID_STORAGE_KEY) || fallbackId;
+    if (preferredId) {
+      const match = storedRecords.find((entry) => entry.id === preferredId);
+      if (match) {
+        setCv(match.cv);
+        setCurrentCvId(match.id);
+        persistCurrentCvId(match.id);
+        setMode('editor');
+        setActiveSection('personal');
+        setActiveWorkspaceView('sections');
+        setShowValidationModal(false);
+        setValidationErrors([]);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (skipInitialPersistRef.current) {
+      skipInitialPersistRef.current = false;
+      return;
+    }
+    if (typeof window === 'undefined') return;
+    if (!currentCvId) return;
+    if (saveTimeoutRef.current) {
+      window.clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = window.setTimeout(() => {
+      const records = readSavedCvsFromStorage();
+      const entry: SavedCvRecord = {
+        id: currentCvId,
+        name: getCvDisplayName(cv),
+        updatedAt: Date.now(),
+        cv,
+      };
+      const existingIndex = records.findIndex(
+        (record) => record.id === currentCvId,
+      );
+      const nextRecords =
+        existingIndex >= 0
+          ? [
+              ...records.slice(0, existingIndex),
+              entry,
+              ...records.slice(existingIndex + 1),
+            ]
+          : [...records, entry];
+      writeSavedCvsToStorage(nextRecords);
+      persistCurrentCvId(currentCvId);
+      setSavedCvs(nextRecords);
+      saveTimeoutRef.current = null;
+    }, 3000);
+    return () => {
+      if (saveTimeoutRef.current) {
+        window.clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+    };
+  }, [cv, currentCvId]);
 
   const handleImportJson = async (file: File) => {
     try {
@@ -555,6 +692,9 @@ export const App: React.FC = () => {
       if (!normalized) {
         throw new Error('Invalid CV JSON structure');
       }
+      const newId = crypto.randomUUID();
+      setCurrentCvId(newId);
+      persistCurrentCvId(newId);
       setCv(normalized);
       setMode('editor');
       setActiveSection('personal');
@@ -635,9 +775,50 @@ export const App: React.FC = () => {
   };
 
   const handleCreateNew = () => {
+    const newId = crypto.randomUUID();
+    setCurrentCvId(newId);
+    persistCurrentCvId(newId);
     setCv(createInitialCv());
     setActiveSection('personal');
     setMode('editor');
+    setActiveWorkspaceView('sections');
+    setShowValidationModal(false);
+    setValidationErrors([]);
+  };
+
+  const handleSelectSavedCv = (id: string) => {
+    const record = savedCvs.find((entry) => entry.id === id);
+    if (!record) return;
+    setCv(record.cv);
+    setMode('editor');
+    setActiveSection('personal');
+    setActiveWorkspaceView('sections');
+    setShowValidationModal(false);
+    setValidationErrors([]);
+    setCurrentCvId(id);
+    persistCurrentCvId(id);
+    addToast(`Loaded ${record.name}.`, 'success');
+  };
+
+  const handleDeleteSavedCv = (id: string, name: string) => {
+    if (
+      !confirm(
+        `Delete saved CV "${name}"? This only removes it from this browser.`,
+      )
+    ) {
+      return;
+    }
+    setSavedCvs((prev) => {
+      const next = prev.filter((record) => record.id !== id);
+      writeSavedCvsToStorage(next);
+      return next;
+    });
+    if (currentCvId === id) {
+      const newId = crypto.randomUUID();
+      setCurrentCvId(newId);
+      persistCurrentCvId(newId);
+    }
+    addToast(`Deleted "${name}".`, 'info');
   };
 
   const handleAddCustomSection = () => {
@@ -820,6 +1001,53 @@ export const App: React.FC = () => {
               className="hidden"
               onChange={handleJsonUploadChange}
             />
+            {savedCvs.length > 0 && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Saved CVs
+                </p>
+                <div className="space-y-2">
+                  {[...savedCvs]
+                    .sort((a, b) => b.updatedAt - a.updatedAt)
+                    .map((record) => (
+                      <div
+                        key={record.id}
+                        className="flex items-stretch gap-2"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleSelectSavedCv(record.id)}
+                          className="flex-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-left text-sm hover:border-slate-300 hover:bg-slate-50"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-slate-900">
+                              {record.name}
+                            </span>
+                            <span className="text-[11px] text-slate-400">
+                              {new Date(record.updatedAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500">
+                            Last updated{' '}
+                            {new Date(record.updatedAt).toLocaleTimeString()}
+                          </p>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleDeleteSavedCv(record.id, record.name)
+                          }
+                          className="rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                          aria-label={`Delete ${record.name}`}
+                          title="Delete saved CV"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
           <p className="text-xs text-slate-500 text-center">
             No sign-up, no server. Your data stays in your browser.
