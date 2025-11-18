@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type {
   CvData,
   CvSectionKey,
@@ -318,7 +318,7 @@ const createSampleCv = (): CvData => {
     skills: [
       { id: makeId(), name: 'TypeScript', level: 'Advanced' },
       { id: makeId(), name: 'React', level: 'Advanced' },
-      { id: makeId(), name: 'Node.js', level: 'Professional' },
+      { id: makeId(), name: 'Node.js', level: 'Intermediate' },
       { id: makeId(), name: 'Design Systems', level: 'Advanced' },
     ],
     languages: [
@@ -340,6 +340,71 @@ const createSampleCv = (): CvData => {
       'talks',
       ...customSectionIds,
     ],
+  };
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const normalizeSectionsOrder = (
+  value: unknown,
+  fallback: SectionId[],
+): SectionId[] => {
+  if (!Array.isArray(value)) return fallback;
+  const sanitized = value.filter(
+    (section): section is SectionId => typeof section === 'string',
+  );
+  return sanitized.length > 0 ? sanitized : fallback;
+};
+
+type CvArrayKey =
+  | 'experience'
+  | 'education'
+  | 'projects'
+  | 'achievements'
+  | 'publications'
+  | 'talks'
+  | 'volunteer'
+  | 'openSource'
+  | 'skills'
+  | 'languages'
+  | 'customSections';
+
+const normalizeCvData = (value: unknown): CvData | null => {
+  if (!isRecord(value)) return null;
+  const base = createInitialCv();
+  const candidate = value as Partial<CvData>;
+  const personalInfo = isRecord(candidate.personalInfo)
+    ? ({
+        ...base.personalInfo,
+        ...(candidate.personalInfo as PersonalInfo),
+      } as PersonalInfo)
+    : base.personalInfo;
+  const pickArray = <K extends CvArrayKey>(key: K): CvData[K] => {
+    const candidateValue = candidate[key];
+    if (Array.isArray(candidateValue)) {
+      return candidateValue as CvData[K];
+    }
+    return base[key];
+  };
+
+  return {
+    personalInfo,
+    experience: pickArray('experience'),
+    education: pickArray('education'),
+    projects: pickArray('projects'),
+    achievements: pickArray('achievements'),
+    publications: pickArray('publications'),
+    talks: pickArray('talks'),
+    volunteer: pickArray('volunteer'),
+    openSource: pickArray('openSource'),
+    skills: pickArray('skills'),
+    languages: pickArray('languages'),
+    customSections: pickArray('customSections'),
+    sectionsOrder: normalizeSectionsOrder(
+      candidate.sectionsOrder,
+      base.sectionsOrder,
+    ),
   };
 };
 
@@ -421,6 +486,7 @@ export const App: React.FC = () => {
   const [fontSettings, setFontSettings] = useState<FontSettings>({
     ...defaultFontSettings,
   });
+  const jsonUploadInputRef = useRef<HTMLInputElement>(null);
   const fontControls: {
     key: keyof FontSettings;
     label: string;
@@ -480,6 +546,39 @@ export const App: React.FC = () => {
       delete window.fillForm;
     };
   }, []);
+
+  const handleImportJson = async (file: File) => {
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const normalized = normalizeCvData(parsed);
+      if (!normalized) {
+        throw new Error('Invalid CV JSON structure');
+      }
+      setCv(normalized);
+      setMode('editor');
+      setActiveSection('personal');
+      setActiveWorkspaceView('sections');
+      setShowValidationModal(false);
+      setValidationErrors([]);
+      addToast('CV loaded from JSON file.', 'success');
+    } catch (error) {
+      console.error(error);
+      addToast(
+        'Could not import JSON. Please use a file exported from this builder.',
+        'error',
+      );
+    }
+  };
+
+  const handleJsonUploadChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await handleImportJson(file);
+    event.target.value = '';
+  };
 
   const sectionStatuses = useMemo(() => {
     const personalValidation = validatePersonalInfo(cv.personalInfo);
@@ -709,11 +808,18 @@ export const App: React.FC = () => {
             </button>
             <button
               type="button"
-              disabled
-              className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-500 cursor-not-allowed"
+              onClick={() => jsonUploadInputRef.current?.click()}
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
             >
-              Upload existing CV JSON (coming soon)
+              Upload existing CV JSON
             </button>
+            <input
+              ref={jsonUploadInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={handleJsonUploadChange}
+            />
           </div>
           <p className="text-xs text-slate-500 text-center">
             No sign-up, no server. Your data stays in your browser.
