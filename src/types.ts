@@ -13,6 +13,13 @@ export type CvSectionKey =
 
 export type SectionId = CvSectionKey | `custom:${string}`;
 
+export interface FontSettings {
+  fullName: number;
+  sectionTitle: number;
+  sectionItemTitle: number;
+  sectionDetail: number;
+}
+
 export interface PersonalInfo {
   fullName: string;
   jobTitle: string;

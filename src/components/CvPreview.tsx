@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import type { CvData, SectionId } from '../types';
+import type { CvData, SectionId, FontSettings } from '../types';
 
 const hasMeaningfulExperience = (experience: CvData['experience']): boolean =>
   experience.some((e) => e.jobTitle.trim() && e.company.trim());
@@ -10,12 +10,13 @@ const hasMeaningfulEducation = (education: CvData['education']): boolean =>
 
 export interface CvPreviewProps {
   cv: CvData;
+  fontSettings: FontSettings;
 }
 
 const PRINT_PAGE_WIDTH = 794; // px at 96dpi for A4 width
 const PRINT_PAGE_HEIGHT = 1123; // px at 96dpi for A4 height
 
-export const CvPreview: React.FC<CvPreviewProps> = ({ cv }) => {
+export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
   const {
     personalInfo,
     experience,
@@ -130,6 +131,13 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv }) => {
       ? Math.max(1, Math.ceil(printContentHeight / PRINT_PAGE_HEIGHT))
       : 1;
   const pageShift = isPrinting ? 0 : pageIndex * displayPageHeight;
+  const pxToRem = (value: number) => `${Math.max(0, value) / 16}rem`;
+  const fontVariableStyles = {
+    '--font-full-name': pxToRem(fontSettings.fullName),
+    '--font-section-title': pxToRem(fontSettings.sectionTitle),
+    '--font-section-item-title': pxToRem(fontSettings.sectionItemTitle),
+    '--font-section-detail': pxToRem(fontSettings.sectionDetail),
+  } as React.CSSProperties;
 
   return (
     <div className="flex h-full flex-col">
@@ -146,6 +154,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv }) => {
           style={{
             transform: `translateY(-${pageShift}px)`,
             height: isPrinting ? 'auto' : '100%',
+            ...fontVariableStyles,
           }}
         >
       {/* Header */}
@@ -217,7 +226,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv }) => {
       <div className="mt-4 space-y-4">
         {personalInfo.summary && (
           <section>
-            <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <h2 className="mb-1 font-section-title font-semibold uppercase tracking-wide text-slate-500">
               Professional Summary
             </h2>
             <div className="text-[11px] text-slate-700">
@@ -235,7 +244,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv }) => {
             if (id === 'experience') {
               return (
                 <section key="experience">
-                  <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <h2 className="mb-1 font-section-title font-semibold uppercase tracking-wide text-slate-500">
                     Experience
                   </h2>
                   {hasExperience ? (
@@ -284,7 +293,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv }) => {
             if (id === 'education') {
               return (
                 <section key="education">
-                  <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <h2 className="mb-1 font-section-title font-semibold uppercase tracking-wide text-slate-500">
                     Education
                   </h2>
                   {hasEducation ? (
@@ -333,7 +342,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv }) => {
             if (id === 'projects') {
               return (
                 <section key="projects">
-                  <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <h2 className="mb-1 font-section-title font-semibold uppercase tracking-wide text-slate-500">
                     Projects
                   </h2>
                   {projects.length === 0 ? (
@@ -387,7 +396,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv }) => {
             if (id === 'achievements') {
               return (
                 <section key="achievements">
-                  <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <h2 className="mb-1 font-section-title font-semibold uppercase tracking-wide text-slate-500">
                     Achievements / Awards
                   </h2>
                   {achievements.length === 0 ? (
@@ -431,7 +440,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv }) => {
             if (id === 'publications') {
               return (
                 <section key="publications">
-                  <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <h2 className="mb-1 font-section-title font-semibold uppercase tracking-wide text-slate-500">
                     Publications
                   </h2>
                   {publications.length === 0 ? (
@@ -470,7 +479,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv }) => {
             if (id === 'talks') {
               return (
                 <section key="talks">
-                  <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <h2 className="mb-1 font-section-title font-semibold uppercase tracking-wide text-slate-500">
                     Talks / Conferences / Workshops
                   </h2>
                   {talks.length === 0 ? (
@@ -514,7 +523,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv }) => {
             if (id === 'volunteer') {
               return (
                 <section key="volunteer">
-                  <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <h2 className="mb-1 font-section-title font-semibold uppercase tracking-wide text-slate-500">
                     Volunteer Experience
                   </h2>
                   {volunteer.length === 0 ? (
@@ -559,7 +568,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv }) => {
             if (id === 'opensource') {
               return (
                 <section key="opensource">
-                  <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <h2 className="mb-1 font-section-title font-semibold uppercase tracking-wide text-slate-500">
                     Open Source Contributions
                   </h2>
                   {openSource.length === 0 ? (
@@ -602,7 +611,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv }) => {
             if (id === 'skills') {
               return (
                 <section key="skills">
-                  <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <h2 className="mb-1 font-section-title font-semibold uppercase tracking-wide text-slate-500">
                     Skills
                   </h2>
                   {skills.length === 0 ? (
@@ -629,7 +638,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv }) => {
             if (id === 'languages') {
               return (
                 <section key="languages">
-                  <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <h2 className="mb-1 font-section-title font-semibold uppercase tracking-wide text-slate-500">
                     Languages
                   </h2>
                   {languages.length === 0 ? (
@@ -659,7 +668,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv }) => {
 
               return (
                 <section key={id}>
-                  <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <h2 className="mb-1 font-section-title font-semibold uppercase tracking-wide text-slate-500">
                     {section.title || 'Custom section'}
                   </h2>
                   {section.body ? (
@@ -715,3 +724,4 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv }) => {
     </div>
   );
 };
+

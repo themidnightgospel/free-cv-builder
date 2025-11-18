@@ -8,6 +8,7 @@ import type {
   SectionId,
   ProjectEntry,
   AchievementEntry,
+  FontSettings,
 } from './types';
 import { PersonalInfoForm } from './components/PersonalInfoForm';
 import { ExperienceForm } from './components/ExperienceForm';
@@ -97,15 +98,15 @@ const createInitialCv = (): CvData => ({
   sectionsOrder: [
     'personal',
     'experience',
-    'volunteer',
     'projects',
-    'opensource',
-    'achievements',
     'education',
-    'publications',
-    'talks',
     'skills',
     'languages',
+    'volunteer',
+    'opensource',
+    'achievements',
+    'publications',
+    'talks',
   ],
 });
 
@@ -329,14 +330,14 @@ const createSampleCv = (): CvData => {
       'personal',
       'experience',
       'projects',
-      'volunteer',
       'education',
-      'achievements',
-      'opensource',
-      'publications',
-      'talks',
       'skills',
       'languages',
+      'volunteer',
+      'opensource',
+      'achievements',
+      'publications',
+      'talks',
       ...customSectionIds,
     ],
   };
@@ -411,6 +412,64 @@ export const App: React.FC = () => {
   const [activeWorkspaceView, setActiveWorkspaceView] = useState<
     'sections' | 'preview'
   >('sections');
+  const defaultFontSettings: FontSettings = {
+    fullName: 28,
+    sectionTitle: 12,
+    sectionItemTitle: 14,
+    sectionDetail: 12,
+  };
+  const [fontSettings, setFontSettings] = useState<FontSettings>({
+    ...defaultFontSettings,
+  });
+  const fontControls: {
+    key: keyof FontSettings;
+    label: string;
+    helper: string;
+    step?: number;
+  }[] = [
+    {
+      key: 'fullName',
+      label: 'Full name font size',
+      helper: 'Controls the hero name in the header.',
+      step: 2,
+    },
+    {
+      key: 'sectionTitle',
+      label: 'Section title font size',
+      helper: 'Applies to headings like Experience or Skills.',
+      step: 1,
+    },
+    {
+      key: 'sectionItemTitle',
+      label: 'Section item title font size',
+      helper: 'Used for job titles, project names, etc.',
+      step: 1,
+    },
+    {
+      key: 'sectionDetail',
+      label: 'Section details font size',
+      helper: 'Controls the body text under each entry.',
+      step: 1,
+    },
+  ];
+
+  const handleFontSettingChange = (
+    key: keyof FontSettings,
+    value: number,
+  ) => {
+    const nextValue = Number.isFinite(value) ? Math.max(0, value) : 0;
+    setFontSettings((prev) => ({ ...prev, [key]: nextValue }));
+  };
+  const adjustFontSetting = (
+    key: keyof FontSettings,
+    delta: number,
+  ) => {
+    setFontSettings((prev) => {
+      const current = prev[key];
+      const nextValue = Math.max(0, Math.round((current + delta) * 10) / 10);
+      return { ...prev, [key]: nextValue };
+    });
+  };
   useEffect(() => {
     window.fillForm = () => {
       setMode('editor');
@@ -913,6 +972,75 @@ export const App: React.FC = () => {
         )}
 
         {/* Live preview */}
+        {activeWorkspaceView === 'preview' && (
+          <div className="mt-4 mx-auto max-w-4xl print:hidden">
+            <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Advanced options
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Fine-tune typography for the exported PDF.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="text-[11px] font-medium text-blue-600 hover:text-blue-700"
+                  onClick={() => setFontSettings({ ...defaultFontSettings })}
+                >
+                  Reset defaults
+                </button>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {fontControls.map((control) => (
+                  <div key={control.key}>
+                    <label className="block text-[11px] font-semibold text-slate-700">
+                      {control.label}
+                    </label>
+                    <p className="text-[10px] text-slate-500">
+                      {control.helper}
+                    </p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        onClick={() =>
+                          adjustFontSetting(control.key, -(control.step ?? 1))
+                        }
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min={0}
+                        step={control.step ?? 1}
+                        className="w-full rounded-md border border-slate-300 px-2 py-1 text-[11px] text-slate-700"
+                        value={fontSettings[control.key]}
+                        onChange={(event) =>
+                          handleFontSettingChange(
+                            control.key,
+                            Number(event.target.value),
+                          )
+                        }
+                      />
+                      <span className="text-[10px] text-slate-500">px</span>
+                      <button
+                        type="button"
+                        className="rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        onClick={() =>
+                          adjustFontSetting(control.key, control.step ?? 1)
+                        }
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
         <div
           className={`mt-4 ${
             activeWorkspaceView === 'preview' ? 'block' : 'hidden'
@@ -930,7 +1058,7 @@ export const App: React.FC = () => {
               </div>
               <div className="bg-slate-200 py-4 px-2 print:bg-transparent print:p-0">
                 <div className="mx-auto aspect-[1/1.4142] w-full max-w-full bg-white shadow-sm border border-slate-200 px-8 py-6 text-slate-900 print:mx-0 print:w-full print:max-w-none print:shadow-none print:border-0 print:max-h-none print:aspect-auto print:p-8">
-                  <CvPreview cv={cv} />
+                  <CvPreview cv={cv} fontSettings={fontSettings} />
                 </div>
               </div>
             </div>
