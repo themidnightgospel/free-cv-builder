@@ -1,6 +1,7 @@
 import React from 'react';
 import type { CustomSection } from '../types';
 import { useConfirmDialog } from './ConfirmDialogProvider';
+import { MarkdownHelp } from './MarkdownHelp';
 
 export interface CustomSectionFormProps {
   section: CustomSection;
@@ -73,9 +74,10 @@ export const CustomSectionForm: React.FC<CustomSectionFormProps> = ({
             }
             placeholder="Add text for this section. Markdown supported for bullets, headings, and emphasis."
           />
-          <p className="mt-1 text-[10px] text-slate-400">
-            Tip: use {'# Heading'}, {'- bullet'}, {'**bold**'}, {'*italic*'}.
-          </p>
+          <div className="mt-1 flex items-center gap-2 text-[10px] text-slate-400">
+            <span>Tip: use {'# Heading'}, {'- bullet'}, {'**bold**'}, {'*italic*'}.</span>
+            <MarkdownHelp />
+          </div>
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import React from 'react';
 import type { EducationEntry } from '../types';
 import { getMonthInputValue } from '../utils/dateFields';
 import { useConfirmDialog } from './ConfirmDialogProvider';
+import { MarkdownHelp } from './MarkdownHelp';
 
 export interface EducationFormProps {
   entries: EducationEntry[];
@@ -202,9 +203,10 @@ export const EducationForm: React.FC<EducationFormProps> = ({
                 }
                 placeholder="Optional: honors, thesis, or coursework. Markdown supported."
               />
-              <p className="mt-1 text-[10px] text-slate-400">
-                Tip: use {'*bullet points*'} and {'**bold**'} with markdown.
-              </p>
+              <div className="mt-1 flex items-center gap-2 text-[10px] text-slate-400">
+                <span>Tip: use {'*bullet points*'} and {'**bold**'} with markdown.</span>
+                <MarkdownHelp />
+              </div>
             </div>
           </div>
         ))}

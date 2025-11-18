@@ -5,7 +5,25 @@
 @media print {
   @page {
     size: A4;
-    margin: 32px 0 32px 0;
+    margin: 15px 0 0 0;
+    @top-left {
+      content: none;
+    }
+    @top-center {
+      content: none;
+    }
+    @top-right {
+      content: none;
+    }
+    @bottom-left {
+      content: none;
+    }
+    @bottom-center {
+      content: none;
+    }
+    @bottom-right {
+      content: none;
+    }
   }
 
   @page :first {
@@ -44,4 +62,12 @@
 
 .cv-preview-content .text-\[11px\] {
   font-size: var(--font-section-detail);
+}
+
+.cv-markdown p {
+  margin: 0;
+}
+
+.cv-markdown p + p {
+  margin-top: 0.5rem;
 }

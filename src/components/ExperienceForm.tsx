@@ -2,6 +2,7 @@ import React from 'react';
 import type { ExperienceEntry } from '../types';
 import { getMonthInputValue } from '../utils/dateFields';
 import { useConfirmDialog } from './ConfirmDialogProvider';
+import { MarkdownHelp } from './MarkdownHelp';
 
 export interface ExperienceFormProps {
   entries: ExperienceEntry[];
@@ -197,16 +198,19 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({
               </label>
               <textarea
                 className="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={3}
+                rows={6}
                 value={entry.description}
                 onChange={(e) =>
                   updateEntry(entry.id, { description: e.target.value })
                 }
                 placeholder="Describe your responsibilities and achievements. Markdown supported for bullets and emphasis."
               />
-              <p className="mt-1 text-[10px] text-slate-400">
-                Tip: use {'*bullet points*'}, {'**bold**'}, and {'`code`'} with markdown.
-              </p>
+              <div className="mt-1 flex items-center gap-2 text-[10px] text-slate-400">
+                <span>
+                  Tip: use {'*bullet points*'}, {'**bold**'}, and {'`code`'} with markdown.
+                </span>
+                <MarkdownHelp />
+              </div>
             </div>
           </div>
         ))}

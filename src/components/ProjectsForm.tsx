@@ -1,6 +1,7 @@
 import React from 'react';
 import type { ProjectEntry } from '../types';
 import { useConfirmDialog } from './ConfirmDialogProvider';
+import { MarkdownHelp } from './MarkdownHelp';
 
 export interface ProjectsFormProps {
   entries: ProjectEntry[];
@@ -179,9 +180,10 @@ export const ProjectsForm: React.FC<ProjectsFormProps> = ({
                 }
                 placeholder="- Implemented X\n- Improved Y by 30%..."
               />
-              <p className="mt-1 text-[10px] text-slate-400">
-                Tip: use markdown bullets for clear, scannable achievements.
-              </p>
+              <div className="mt-1 flex items-center gap-2 text-[10px] text-slate-400">
+                <span>Tip: use markdown bullets for clear, scannable achievements.</span>
+                <MarkdownHelp />
+              </div>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-700">

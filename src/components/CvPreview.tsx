@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import type { Components } from 'react-markdown';
 import type { CvData, SectionId, FontSettings } from '../types';
 import { formatMonthForDisplay } from '../utils/dateFields';
 
@@ -262,6 +263,12 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
     const normalized = trimmed.replace(/[^+\d]/g, '');
     return normalized || trimmed;
   };
+  const normalizeMarkdownHref = (href?: string) => {
+    const trimmed = href?.trim() ?? '';
+    if (!trimmed) return '';
+    if (trimmed.startsWith('#')) return trimmed;
+    return ensureUrlProtocol(trimmed);
+  };
   const renderExternalLink = (
     value: string,
     label?: string,
@@ -274,6 +281,28 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
         {label ?? value}
       </a>
     );
+  };
+  const markdownComponents: Components = {
+    a({ node: _node, href, children, className, ...props }) {
+      const safeHref = normalizeMarkdownHref(href);
+      if (!safeHref) {
+        return <span {...props}>{children}</span>;
+      }
+      const combinedClassName = ['text-blue-600 hover:underline', className]
+        .filter(Boolean)
+        .join(' ');
+      return (
+        <a
+          {...props}
+          href={safeHref}
+          target="_blank"
+          rel="noreferrer"
+          className={combinedClassName}
+        >
+          {children}
+        </a>
+      );
+    },
   };
 
   const contentStyles: React.CSSProperties = {
@@ -382,7 +411,11 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
               Professional Summary
             </h2>
             <div className="text-[11px] text-slate-700">
-              <ReactMarkdown skipHtml>{personalInfo.summary}</ReactMarkdown>
+              <div className="cv-markdown">
+                <ReactMarkdown skipHtml components={markdownComponents}>
+                  {personalInfo.summary}
+                </ReactMarkdown>
+              </div>
             </div>
           </section>
         )}
@@ -433,9 +466,14 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
                               </div>
                               {e.description && (
                                 <div className="mt-1 text-[11px] text-slate-700">
-                                  <ReactMarkdown skipHtml>
-                                    {e.description}
-                                  </ReactMarkdown>
+                                  <div className="cv-markdown">
+                                    <ReactMarkdown
+                                      skipHtml
+                                      components={markdownComponents}
+                                    >
+                                      {e.description}
+                                    </ReactMarkdown>
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -486,9 +524,14 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
                               </div>
                               {e.description && (
                                 <div className="mt-1 text-[11px] text-slate-700">
-                                  <ReactMarkdown skipHtml>
-                                    {e.description}
-                                  </ReactMarkdown>
+                                  <div className="cv-markdown">
+                                    <ReactMarkdown
+                                      skipHtml
+                                      components={markdownComponents}
+                                    >
+                                      {e.description}
+                                    </ReactMarkdown>
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -530,12 +573,26 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
                         </div>
                         {p.description && (
                           <div className="mt-1 text-[11px] text-slate-700">
-                            <ReactMarkdown skipHtml>{p.description}</ReactMarkdown>
+                            <div className="cv-markdown">
+                              <ReactMarkdown
+                                skipHtml
+                                components={markdownComponents}
+                              >
+                                {p.description}
+                              </ReactMarkdown>
+                            </div>
                           </div>
                         )}
                         {p.achievements && (
                           <div className="mt-1 text-[11px] text-slate-700">
-                            <ReactMarkdown skipHtml>{p.achievements}</ReactMarkdown>
+                            <div className="cv-markdown">
+                              <ReactMarkdown
+                                skipHtml
+                                components={markdownComponents}
+                              >
+                                {p.achievements}
+                              </ReactMarkdown>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -824,7 +881,14 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
                     {section.title || 'Custom section'}
                   </h2>
                   <div className="text-[11px] text-slate-700">
-                    <ReactMarkdown skipHtml>{section.body}</ReactMarkdown>
+                    <div className="cv-markdown">
+                      <ReactMarkdown
+                        skipHtml
+                        components={markdownComponents}
+                      >
+                        {section.body}
+                      </ReactMarkdown>
+                    </div>
                   </div>
                 </section>
               );

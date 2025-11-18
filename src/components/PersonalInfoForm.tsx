@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { PersonalInfo } from '../types';
+import { MarkdownHelp } from './MarkdownHelp';
 
 export interface PersonalInfoFormProps {
   personalInfo: PersonalInfo;
@@ -81,9 +82,12 @@ export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
               }
               placeholder="2–4 lines summarizing your experience and goals. Markdown supported."
             />
-            <p className="mt-1 text-[10px] text-slate-400">
-              Tip: use {'**bold**'} for key phrases and {'*bullets*'} with markdown if needed.
-            </p>
+            <div className="mt-1 flex items-center gap-2 text-[10px] text-slate-400">
+              <span>
+                Tip: use {'**bold**'} for key phrases and {'*bullets*'} with markdown if needed.
+              </span>
+              <MarkdownHelp />
+            </div>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>

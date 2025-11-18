@@ -657,6 +657,14 @@ export const App: React.FC = () => {
       skipInitialPersistRef.current = false;
       return;
     }
+    if (mode !== 'editor') {
+      if (typeof window !== 'undefined' && saveTimeoutRef.current) {
+        window.clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+      setHasUnsavedChanges(false);
+      return;
+    }
     if (typeof window === 'undefined') return;
     if (!currentCvId) return;
     setHasUnsavedChanges(true);
@@ -687,14 +695,14 @@ export const App: React.FC = () => {
       setSavedCvs(nextRecords);
       setHasUnsavedChanges(false);
       saveTimeoutRef.current = null;
-    }, 3000);
+    }, 2000);
     return () => {
       if (saveTimeoutRef.current) {
         window.clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = null;
       }
     };
-  }, [cv, currentCvId]);
+  }, [cv, currentCvId, mode]);
 
   const handleImportJson = async (file: File) => {
     try {
@@ -783,7 +791,7 @@ export const App: React.FC = () => {
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3000);
+    }, 2000);
   };
 
   const handleCreateNew = () => {
@@ -938,21 +946,14 @@ export const App: React.FC = () => {
   };
 
   const header = (
-    <header className="fixed inset-x-0 top-0 z-20 bg-white/80 backdrop-blur border-b border-gray-200 print:hidden">
+    <header className="fixed inset-x-0 top-0 z-20 bg-white/90 border-b border-gray-200 shadow-sm print:hidden">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3">
           <button
             type="button"
             className="text-sm text-gray-500 hover:text-gray-700"
-            onClick={async () => {
-              const confirmed = await confirmDialog({
-                title: 'Return to start?',
-                message:
-                  'Your current CV will remain stored in this browser unless you clear it.',
-              });
-              if (confirmed) {
-                setMode('landing');
-              }
+            onClick={() => {
+              setMode('landing');
             }}
           >
             ← Back to start
