@@ -25,7 +25,6 @@ import { PdfPayloadPortal, PdfPayloadPrintBlock } from './pdf/PdfPayloadEmbed';
 import {
   CURRENT_CV_ID_STORAGE_KEY,
   getCvDisplayName,
-  type SavedCvRecord,
 } from './state/cvStorage';
 import {
   createEmptyAchievement,
@@ -473,10 +472,10 @@ export const App: React.FC = () => {
           <div className="h-6 w-px bg-gray-200" />
           <div>
             <div className="text-sm font-semibold text-gray-900">
-              Free CV Builder
+                Truly free CV builder
             </div>
             <div className="text-xs text-gray-500">
-              Create and download your CV, fully in your browser.
+                No paywall, no sign-up, no data harvesting
             </div>
           </div>
         </div>
@@ -536,11 +535,8 @@ export const App: React.FC = () => {
           <div className="w-full max-w-lg rounded-2xl bg-white shadow-sm border border-slate-200 p-8 space-y-6">
             <div className="space-y-2 text-center">
               <h1 className="text-2xl font-semibold text-slate-900">
-                Free CV Builder
+                  Truly free CV builder
               </h1>
-              <p className="text-sm text-slate-600">
-                Create and download your CV, fully in your browser.
-              </p>
             </div>
             <div className="space-y-3">
               <button
@@ -617,8 +613,19 @@ export const App: React.FC = () => {
                 </div>
               )}
             </div>
-            <p className="text-xs text-slate-500 text-center">
-              No sign-up, no server. Your data stays in your browser.
+            <p className="text-xs text-slate-500 text-center font-semibold">
+                No paywall, no sign-up, no data harvesting, no ‘free until download’, no watermarks
+            </p>
+            <p className="text-xs text-slate-500 text-center font-semibold">
+                Open-source on{' '}
+                <a
+                  href="https://github.com/themidnightgospel/free-cv-builder"
+                  className="text-blue-600 hover:underline"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  GitHub
+                </a>
             </p>
           </div>
         </div>
