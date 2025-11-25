@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDownTrayIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { ungzip, inflate } from 'pako';
+import { inflate } from 'pako';
 import type { CvData, CvSectionKey, FontSettings, SectionId } from './types';
 import { PersonalInfoForm } from './components/PersonalInfoForm';
 import { ExperienceForm } from './components/ExperienceForm';
@@ -15,6 +15,7 @@ import { TalksForm } from './components/TalksForm';
 import { VolunteerForm } from './components/VolunteerForm';
 import { OpenSourceForm } from './components/OpenSourceForm';
 import { LanguagesForm } from './components/LanguagesForm';
+import { PhotoCropModal } from './components/PhotoCropModal';
 import { useConfirmDialog } from './components/ConfirmDialogProvider';
 import { encodeCvPayloadForText } from './pdf/encodeCvPayload';
 import {
@@ -71,6 +72,7 @@ export const App: React.FC = () => {
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [importError, setImportError] = useState<string | null>(null);
+  const [photoCropImageSrc, setPhotoCropImageSrc] = useState<string | null>(null);
   const [draggingSectionId, setDraggingSectionId] = useState<SectionId | null>(
     null,
   );
@@ -573,15 +575,30 @@ export const App: React.FC = () => {
   const handlePhotoUpload = (file: File) => {
     const reader = new FileReader();
     reader.onload = () => {
-      setCv((prev) => ({
-        ...prev,
-        personalInfo: {
-          ...prev.personalInfo,
-          photoDataUrl: typeof reader.result === 'string' ? reader.result : null,
-        },
-      }));
+      if (typeof reader.result === 'string') {
+        setPhotoCropImageSrc(reader.result);
+      } else {
+        addToast('Could not read photo file. Please try another image.', 'error');
+      }
     };
+    reader.onerror = () =>
+      addToast('Could not read photo file. Please try again.', 'error');
     reader.readAsDataURL(file);
+  };
+
+  const handlePhotoCropSave = (dataUrl: string) => {
+    setCv((prev) => ({
+      ...prev,
+      personalInfo: {
+        ...prev.personalInfo,
+        photoDataUrl: dataUrl,
+      },
+    }));
+    setPhotoCropImageSrc(null);
+  };
+
+  const handlePhotoCropCancel = () => {
+    setPhotoCropImageSrc(null);
   };
 
   const importErrorModal = importError && (
@@ -1136,6 +1153,14 @@ export const App: React.FC = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {photoCropImageSrc && (
+          <PhotoCropModal
+            imageSrc={photoCropImageSrc}
+            onCancel={handlePhotoCropCancel}
+            onSave={handlePhotoCropSave}
+          />
         )}
 
         {/* Validation modal */}

@@ -25,6 +25,7 @@
     "pdfjs-dist": "^4.10.38",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-easy-crop": "^5.0.7",
     "react-markdown": "^10.1.0"
   }
 }
