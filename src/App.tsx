@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDownTrayIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { inflate } from 'pako';
 import type { CvData, CvSectionKey, FontSettings, SectionId } from './types';
 import { PersonalInfoForm } from './components/PersonalInfoForm';
 import { ExperienceForm } from './components/ExperienceForm';
@@ -19,11 +18,8 @@ import { PhotoCropModal } from './components/PhotoCropModal';
 import { useConfirmDialog } from './components/ConfirmDialogProvider';
 import { encodeCvPayloadForText } from './pdf/encodeCvPayload';
 import {
-  bytesToBinaryString,
-  decodeEmbeddedCvPayload,
-  extractChunkedPayloadFromText,
+  extractEmbeddedCvJsonFromPdf,
   extractProfileImageFromPdf,
-  loadPdfJs,
 } from './pdf/pdfExtraction';
 import { PdfPayloadPortal, PdfPayloadPrintBlock } from './pdf/PdfPayloadEmbed';
 import {
@@ -248,189 +244,14 @@ export const App: React.FC = () => {
       const buffer = await file.arrayBuffer();
       const bytes = new Uint8Array(buffer);
       const cloneBytes = () => new Uint8Array(bytes);
-      const textContentRaw = bytesToBinaryString(bytes);
       const photoFromPdfPromise = extractProfileImageFromPdf(cloneBytes()).catch(
         () => null,
       );
 
-      let pdfJsText: string | null = null;
-      try {
-        const pdfjs = await loadPdfJs();
-        const doc = await pdfjs.getDocument({
-          data: cloneBytes(),
-        }).promise;
-        let extractedText = '';
-        for (let pageIndex = 1; pageIndex <= doc.numPages; pageIndex += 1) {
-          const page = await doc.getPage(pageIndex);
-          const content = await page.getTextContent();
-          extractedText += content.items
-            .map((item: any) => ('str' in item ? item.str : ''))
-            .join(' ');
-        }
-        pdfJsText = extractedText;
-      } catch (pdfJsError) {
-        console.error(
-          'Unable to extract PDF text layer via pdf.js',
-          pdfJsError,
-        );
-      }
-
-      const textContent = pdfJsText || textContentRaw;
-      const normalizedTextContent = textContent.replace(/\s+/g, '');
-      const normalizedAsciiTextContent = normalizedTextContent.replace(
-        /[\u200B-\u200D\uFEFF]/g,
-        '',
-      );
-      const asciiTextContent = textContent.replace(/[^\x20-\x7E]/g, '');
-      const asciiNormalized = asciiTextContent.replace(/\s+/g, '');
-      const alnumOnly = textContent.replace(/[^A-Za-z0-9{}\[\]":,._-]/g, '');
-      const alnumNormalized = alnumOnly.replace(/\s+/g, '');
-
-      const tryExtractFromText = (source: string): string | null => {
-        // Prefer new chunked payload format.
-        const fromChunks = extractChunkedPayloadFromText(source);
-        if (fromChunks) return fromChunks;
-
-        // Legacy marker-based format for backward compatibility.
-        const legacyStart = 'FREECVBUILDER_JSON_TEXT_START';
-        const legacyEnd = 'FREECVBUILDER_JSON_TEXT_END';
-        const expand = (marker: string) =>
-          marker
-            .split('')
-            .map((ch) => `${ch}[\\s\\u200B-\\u200D\\uFEFF]*`)
-            .join('');
-        const regex = new RegExp(
-          `${expand(legacyStart)}([\\s\\S]*?)${expand(legacyEnd)}`,
-          'gi',
-        );
-
-        let match: RegExpExecArray | null;
-        // eslint-disable-next-line no-cond-assign
-        while ((match = regex.exec(source)) !== null) {
-          const rawPayload = match[1];
-          const cleaned = rawPayload
-            .replace(/[\u200B-\u200D\uFEFF]/g, '')
-            .trim();
-          if (!cleaned) continue;
-          try {
-            JSON.parse(cleaned);
-            return cleaned;
-          } catch {
-            try {
-              const decoded = decodeEmbeddedCvPayload(cleaned);
-              JSON.parse(decoded);
-              return decoded;
-            } catch {
-              // Try the next match.
-            }
-          }
-        }
-
-        return null;
-      };
-
-      const tryExtractFromPdfStreamContent = (
-        content: string,
-      ): string | null => {
-        const direct = tryExtractFromText(content);
-        if (direct) return direct;
-        const stringLiterals = Array.from(content.matchAll(/\\((.*?)\\)/gs)).map(
-          (match) => match[1],
-        );
-        if (stringLiterals.length) {
-          const joined = stringLiterals.join('');
-          const fromJoined = tryExtractFromText(joined);
-          if (fromJoined) return fromJoined;
-          const squeezed = joined.replace(/[^A-Za-z0-9{}\\[\\]\":,._-]/g, '');
-          const fromSqueezed = tryExtractFromText(squeezed);
-          if (fromSqueezed) return fromSqueezed;
-        }
-        return null;
-      };
-
-      let jsonText: string | null = null;
-      const candidateSources = [
-        textContent,
-        asciiTextContent,
-        normalizedTextContent,
-        normalizedAsciiTextContent,
-        asciiNormalized,
-        alnumOnly,
-        alnumNormalized,
-      ];
-      for (const candidate of candidateSources) {
-        jsonText = tryExtractFromText(candidate);
-        if (jsonText) break;
-      }
-
+      const jsonText = await extractEmbeddedCvJsonFromPdf(cloneBytes());
       if (!jsonText) {
-            const decoder = new TextDecoder('latin1');
-            const text = decoder.decode(bytes);
-            const streamKeyword = 'stream';
-            const endstreamKeyword = 'endstream';
-
-            let searchIndex = 0;
-
-            while (true) {
-              const streamIndex = text.indexOf(streamKeyword, searchIndex);
-              if (streamIndex === -1) break;
-
-              let dataStart =
-                streamIndex + streamKeyword.length;
-              if (text[dataStart] === '\r' && text[dataStart + 1] === '\n') {
-                dataStart += 2;
-              } else if (text[dataStart] === '\n') {
-                dataStart += 1;
-              }
-
-              const endIndex = text.indexOf(endstreamKeyword, dataStart);
-              if (endIndex === -1) break;
-
-              const streamBytes = bytes.subarray(dataStart, endIndex);
-
-              try {
-                const decompressed = inflate(streamBytes, {
-                  to: 'string',
-                }) as string;
-                const candidate = tryExtractFromPdfStreamContent(decompressed);
-                if (candidate) {
-                  jsonText = candidate;
-                  break;
-                }
-              } catch {
-                // Ignore streams that are not Flate-compressed text.
-              }
-
-              searchIndex = endIndex + endstreamKeyword.length;
-            }
-
-            if (!jsonText) {
-              try {
-                const pdfjs = await loadPdfJs();
-                const doc = await pdfjs.getDocument({
-                  data: cloneBytes(),
-                }).promise;
-                let extractedText = '';
-                for (let pageIndex = 1; pageIndex <= doc.numPages; pageIndex += 1) {
-                  const page = await doc.getPage(pageIndex);
-                  const content = await page.getTextContent();
-                  extractedText += content.items
-                    .map((item: any) => ('str' in item ? item.str : ''))
-                    .join(' ');
-                }
-                const fromPdfjs = tryExtractFromText(extractedText);
-                if (fromPdfjs) {
-                  jsonText = fromPdfjs;
-                }
-              } catch (pdfJsError) {
-                console.error('Unable to extract PDF payload via pdf.js', pdfJsError);
-              }
-            }
-          }
-
-          if (!jsonText) {
-            setImportError(
-              'This CV must be created using Free CV Builder. Please upload a PDF exported from Free CV Builder.',
+        setImportError(
+          'This CV must be created using Free CV Builder. Please upload a PDF exported from Free CV Builder.',
         );
         return;
       }
@@ -445,7 +266,7 @@ export const App: React.FC = () => {
     } finally {
       event.target.value = '';
     }
-  };
+  };;
 
   const sectionStatuses = useMemo(() => {
     const personalValidation = validatePersonalInfo(cv.personalInfo);

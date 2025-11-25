@@ -85,6 +85,7 @@ export const extractChunkedPayloadFromText = (source: string): string | null => 
 
 export const tryExtractJsonFromPdfStreams = (
   bytes: Uint8Array,
+  extractFromStreamContent?: (content: string) => string | null,
 ): string | null => {
   const decoder = new TextDecoder('latin1');
   const text = decoder.decode(bytes);
@@ -108,13 +109,18 @@ export const tryExtractJsonFromPdfStreams = (
 
     try {
       const decompressed = inflate(streamBytes, { to: 'string' }) as string;
-      // New chunked format.
+      const fromExtractor = extractFromStreamContent
+        ? extractFromStreamContent(decompressed)
+        : null;
+      if (fromExtractor) return fromExtractor;
+
+      // Default: new chunked format.
       const fromChunks = extractChunkedPayloadFromText(decompressed);
       if (fromChunks) {
         return fromChunks;
       }
 
-      // Legacy single-block marker format for backward compatibility.
+      // Default: legacy single-block marker format for backward compatibility.
       const textStart = decompressed.indexOf(PDF_JSON_TEXT_START_MARKER);
       if (textStart !== -1) {
         const textEnd = decompressed.indexOf(
@@ -127,16 +133,13 @@ export const tryExtractJsonFromPdfStreams = (
             textEnd,
           );
           const trimmed = rawPayload.trim();
-          if (!trimmed) {
-            searchIndex = endIndex + endstreamKeyword.length;
-            continue;
-          }
-          try {
-            JSON.parse(trimmed);
-            return trimmed;
-          } catch {
-            searchIndex = endIndex + endstreamKeyword.length;
-            continue;
+          if (trimmed) {
+            try {
+              JSON.parse(trimmed);
+              return trimmed;
+            } catch {
+              // try next stream
+            }
           }
         }
       }
@@ -173,6 +176,138 @@ export const decodeEmbeddedCvPayload = (payload: string): string => {
   } catch {
     return trimmed;
   }
+};
+
+const tryExtractEmbeddedJsonFromText = (source: string): string | null => {
+  if (!source) return null;
+
+  const fromChunks = extractChunkedPayloadFromText(source);
+  if (fromChunks) return fromChunks;
+
+  const legacyStart = 'FREECVBUILDER_JSON_TEXT_START';
+  const legacyEnd = 'FREECVBUILDER_JSON_TEXT_END';
+  const expand = (marker: string) =>
+    marker
+      .split('')
+      .map((ch) => `${ch}[\\s\\u200B-\\u200D\\uFEFF]*`)
+      .join('');
+  const regex = new RegExp(
+    `${expand(legacyStart)}([\\s\\S]*?)${expand(legacyEnd)}`,
+    'gi',
+  );
+
+  let match: RegExpExecArray | null;
+  // eslint-disable-next-line no-cond-assign
+  while ((match = regex.exec(source)) !== null) {
+    const rawPayload = match[1];
+    const cleaned = rawPayload.replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
+    if (!cleaned) continue;
+    try {
+      JSON.parse(cleaned);
+      return cleaned;
+    } catch {
+      try {
+        const decoded = decodeEmbeddedCvPayload(cleaned);
+        JSON.parse(decoded);
+        return decoded;
+      } catch {
+        // Try next match.
+      }
+    }
+  }
+
+  return null;
+};
+
+const buildTextVariants = (text: string): string[] => {
+  const asciiText = text.replace(/[^\x20-\x7E]/g, '');
+  const normalized = text.replace(/\s+/g, '');
+  const normalizedAscii = normalized.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  const asciiNormalized = asciiText.replace(/\s+/g, '');
+  const alnumOnly = text.replace(/[^A-Za-z0-9{}\[\]":,._-]/g, '');
+  const alnumNormalized = alnumOnly.replace(/\s+/g, '');
+  return Array.from(
+    new Set<string>([
+      text,
+      asciiText,
+      normalized,
+      normalizedAscii,
+      asciiNormalized,
+      alnumOnly,
+      alnumNormalized,
+    ]),
+  ).filter(Boolean);
+};
+
+const tryExtractFromPdfStreamContent = (content: string): string | null => {
+  const direct = tryExtractEmbeddedJsonFromText(content);
+  if (direct) return direct;
+
+  const stringLiterals = Array.from(content.matchAll(/\((.*?)\)/gs)).map(
+    (match) => match[1],
+  );
+  if (stringLiterals.length) {
+    const joined = stringLiterals.join('');
+    const fromJoined = tryExtractEmbeddedJsonFromText(joined);
+    if (fromJoined) return fromJoined;
+    const squeezed = joined.replace(/[^A-Za-z0-9{}\[\]":,._-]/g, '');
+    const fromSqueezed = tryExtractEmbeddedJsonFromText(squeezed);
+    if (fromSqueezed) return fromSqueezed;
+  }
+
+  return null;
+};
+
+export const extractEmbeddedCvJsonFromPdf = async (
+  bytes: Uint8Array,
+): Promise<string | null> => {
+  const seen = new Set<string>();
+  const tryFromText = (text: string): string | null => {
+    for (const variant of buildTextVariants(text)) {
+      if (seen.has(variant)) continue;
+      seen.add(variant);
+      const result = tryExtractEmbeddedJsonFromText(variant);
+      if (result) return result;
+    }
+    return null;
+  };
+
+  const rawText = bytesToBinaryString(bytes);
+  let textContent: string | null = null;
+
+  try {
+    const pdfjs = await loadPdfJs();
+    const doc = await pdfjs.getDocument({ data: bytes }).promise;
+    let extractedText = '';
+    for (let pageIndex = 1; pageIndex <= doc.numPages; pageIndex += 1) {
+      const page = await doc.getPage(pageIndex);
+      const content = await page.getTextContent();
+      extractedText += content.items
+        .map((item: any) => ('str' in item ? item.str : ''))
+        .join(' ');
+    }
+    textContent = extractedText;
+    const fromPdfJs = tryFromText(extractedText);
+    if (fromPdfJs) return fromPdfJs;
+  } catch (pdfJsError) {
+    console.error('Unable to extract PDF text layer via pdf.js', pdfJsError);
+  }
+
+  if (textContent) {
+    const fromText = tryFromText(textContent);
+    if (fromText) return fromText;
+  }
+
+  const fromRaw = tryFromText(rawText);
+  if (fromRaw) return fromRaw;
+
+  const fromStreams = tryExtractJsonFromPdfStreams(
+    bytes,
+    tryExtractFromPdfStreamContent,
+  );
+  if (fromStreams) return fromStreams;
+
+  return null;
 };
 
 const convertImageToDataUrl = (image: any, pdfjs: any): string | null => {

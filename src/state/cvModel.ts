@@ -441,19 +441,24 @@ export const normalizeCvData = (value: unknown): CvData | null => {
   };
 };
 
+export const validateFullName = (fullName: string): string => {
+  if (!fullName.trim()) return 'Full name is required.';
+  return '';
+};
+
+export const validateEmailAddress = (email: string): string => {
+  if (!email.trim()) return 'Email is required.';
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailPattern.test(email)) return 'Email format is invalid.';
+  return '';
+};
+
 export const validatePersonalInfo = (personalInfo: PersonalInfo) => {
   const errors: string[] = [];
-  if (!personalInfo.fullName.trim()) {
-    errors.push('Full name is required.');
-  }
-  if (!personalInfo.email.trim()) {
-    errors.push('Email is required.');
-  } else {
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(personalInfo.email)) {
-      errors.push('Email format is invalid.');
-    }
-  }
+  const nameError = validateFullName(personalInfo.fullName);
+  if (nameError) errors.push(nameError);
+  const emailError = validateEmailAddress(personalInfo.email);
+  if (emailError) errors.push(emailError);
   return { isValid: errors.length === 0, errors };
 };
 

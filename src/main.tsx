@@ -5,7 +5,7 @@ import { App } from './App';
 import { ConfirmDialogProvider } from './components/ConfirmDialogProvider';
 import { ToastProvider } from './components/toast/ToastProvider';
 
-console.log('FreeCvBuilder version 1.0.41');
+console.log('FreeCvBuilder version 1.0.43');
 
 ReactDOM.createRoot(document.getElementById('app') as HTMLElement).render(
   <React.StrictMode>

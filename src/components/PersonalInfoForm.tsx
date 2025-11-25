@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { PersonalInfo } from '../types';
+import { validateEmailAddress, validateFullName } from '../state/cvModel';
 import { MarkdownHelp } from './MarkdownHelp';
 
 export interface PersonalInfoFormProps {
@@ -18,16 +19,13 @@ export const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
 
   const emailError = useMemo(() => {
     if (!touchedEmail) return '';
-    if (!personalInfo.email.trim()) return 'Email is required.';
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(personalInfo.email)) return 'Email format is invalid.';
-    return '';
+    return validateEmailAddress(personalInfo.email);
   }, [personalInfo.email, touchedEmail]);
 
-  const nameError =
-    touchedName && !personalInfo.fullName.trim()
-      ? 'Full name is required.'
-      : '';
+  const nameError = useMemo(() => {
+    if (!touchedName) return '';
+    return validateFullName(personalInfo.fullName);
+  }, [personalInfo.fullName, touchedName]);
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
