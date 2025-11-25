@@ -3,11 +3,16 @@ import ReactDOM from 'react-dom/client';
 import './style.css';
 import { App } from './App';
 import { ConfirmDialogProvider } from './components/ConfirmDialogProvider';
+import { ToastProvider } from './components/toast/ToastProvider';
+
+console.log('FreeCvBuilder version 1.0.29');
 
 ReactDOM.createRoot(document.getElementById('app') as HTMLElement).render(
   <React.StrictMode>
     <ConfirmDialogProvider>
-      <App />
+      <ToastProvider>
+        <App />
+      </ToastProvider>
     </ConfirmDialogProvider>
   </React.StrictMode>,
 );

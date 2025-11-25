@@ -85,15 +85,165 @@ const hasMeaningfulSkills = (skills: CvData['skills']): boolean =>
 const hasMeaningfulLanguages = (languages: CvData['languages']): boolean =>
   languages.some(languageHasContent);
 
+const ensureUrlProtocol = (value: string) => {
+  const trimmed = value?.trim() ?? '';
+  if (!trimmed) return '';
+  if (/^[a-z]+:/i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+};
+
+const looksLikeUrl = (value: string) => {
+  const trimmed = value?.trim() ?? '';
+  if (!trimmed) return false;
+  return /^(https?:\/\/|www\.)/i.test(trimmed);
+};
+
+const formatTelHref = (value: string) => {
+  const trimmed = value?.trim() ?? '';
+  if (!trimmed) return '';
+  const normalized = trimmed.replace(/[^+\d]/g, '');
+  return normalized || trimmed;
+};
+
+const normalizeMarkdownHref = (href?: string) => {
+  const trimmed = href?.trim() ?? '';
+  if (!trimmed) return '';
+  if (trimmed.startsWith('#')) return trimmed;
+  return ensureUrlProtocol(trimmed);
+};
+
+const renderExternalLink = (
+  value: string,
+  label?: string,
+  className = 'text-blue-600 hover:underline break-all',
+) => {
+  const href = ensureUrlProtocol(value);
+  if (!href) return null;
+  return (
+    <a href={href} target="_blank" rel="noreferrer" className={className}>
+      {label ?? value}
+    </a>
+  );
+};
+
+const markdownComponents: Components = {
+  a({ node: _node, href, children, className, ...props }) {
+    const safeHref = normalizeMarkdownHref(href);
+    if (!safeHref) {
+      return <span {...props}>{children}</span>;
+    }
+    const combinedClassName = ['text-blue-600 hover:underline', className]
+      .filter(Boolean)
+      .join(' ');
+    return (
+      <a
+        {...props}
+        href={safeHref}
+        target="_blank"
+        rel="noreferrer"
+        className={combinedClassName}
+      >
+        {children}
+      </a>
+    );
+  },
+};
+
+interface CvHeaderProps {
+  personalInfo: CvData['personalInfo'];
+}
+
+const CvHeader: React.FC<CvHeaderProps> = ({ personalInfo }) => (
+  <div className="flex flex-col gap-4 border-b border-slate-200 pb-3 sm:flex-row sm:items-center sm:gap-[0.9rem]">
+    <div className="flex items-center gap-4">
+      {personalInfo.photoDataUrl && (
+        <div className="h-16 w-16 overflow-hidden rounded-full bg-slate-100">
+          <img
+            src={personalInfo.photoDataUrl}
+            alt={personalInfo.fullName || 'Profile photo'}
+            className="h-full w-full object-cover"
+          />
+        </div>
+      )}
+      <div>
+        <h1 className="text-xl font-semibold text-slate-900">
+          {personalInfo.fullName || 'Your full name'}
+        </h1>
+        <p className="text-[11px] text-slate-500">
+          {personalInfo.jobTitle || 'Job title or professional headline'}
+        </p>
+      </div>
+    </div>
+    <div className="flex flex-1 justify-end">
+      <div className="grid w-full max-w-md grid-cols-1 gap-1 text-[11px] text-slate-600 sm:grid-cols-2">
+        {personalInfo.email && (
+          <p className="truncate">
+            <span className="font-medium text-slate-700">Email:</span>{' '}
+            <a
+              href={`mailto:${personalInfo.email.trim()}`}
+              className="break-all text-blue-600 hover:underline"
+            >
+              {personalInfo.email}
+            </a>
+          </p>
+        )}
+        {personalInfo.phone && (
+          <p className="truncate">
+            <span className="font-medium text-slate-700">Phone:</span>{' '}
+            <a
+              href={`tel:${formatTelHref(personalInfo.phone)}`}
+              className="break-all text-blue-600 hover:underline"
+            >
+              {personalInfo.phone}
+            </a>
+          </p>
+        )}
+        {personalInfo.location && (
+          <p className="truncate">
+            <span className="font-medium text-slate-700">Location:</span>{' '}
+            {personalInfo.location}
+          </p>
+        )}
+        {ensureUrlProtocol(personalInfo.website) && (
+          <p className="break-all">
+            <span className="font-medium text-slate-700">Portfolio:</span>{' '}
+            {renderExternalLink(personalInfo.website)}
+          </p>
+        )}
+        {ensureUrlProtocol(personalInfo.linkedin) && (
+          <p className="break-all">
+            <span className="font-medium text-slate-700">LinkedIn:</span>{' '}
+            {renderExternalLink(personalInfo.linkedin, personalInfo.linkedin)}
+          </p>
+        )}
+        {!personalInfo.email &&
+          !personalInfo.phone &&
+          !personalInfo.location &&
+          !personalInfo.website &&
+          !personalInfo.linkedin && (
+            <p className="text-[11px] text-slate-400">
+              Add your contact details to show them here.
+            </p>
+          )}
+      </div>
+    </div>
+  </div>
+);
+
 export interface CvPreviewProps {
   cv: CvData;
   fontSettings: FontSettings;
+  forcePrintLayout?: boolean;
 }
 
-const PRINT_PAGE_WIDTH = 794; // px at 96dpi for A4 width
-const PRINT_PAGE_HEIGHT = 1123; // px at 96dpi for A4 height
+export const PRINT_PAGE_WIDTH = 794; // px at 96dpi for A4 width
+export const PRINT_PAGE_HEIGHT = 1123; // px at 96dpi for A4 height
 
-export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
+export const CvPreview: React.FC<CvPreviewProps> = ({
+  cv,
+  fontSettings,
+  forcePrintLayout = false,
+}) => {
   const {
     personalInfo,
     experience,
@@ -238,7 +388,8 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
     PRINT_PAGE_HEIGHT > 0
       ? Math.max(1, Math.ceil(printContentHeight / PRINT_PAGE_HEIGHT))
       : 1;
-  const pageShift = isPrinting ? 0 : pageIndex * displayPageHeight;
+  const printMode = forcePrintLayout || isPrinting;
+  const pageShift = printMode ? 0 : pageIndex * displayPageHeight;
   const pxToRem = (value: number) => `${Math.max(0, value) / 16}rem`;
   const fontVariableStyles = {
     '--font-full-name': pxToRem(fontSettings.fullName),
@@ -246,71 +397,13 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
     '--font-section-item-title': pxToRem(fontSettings.sectionItemTitle),
     '--font-section-detail': pxToRem(fontSettings.sectionDetail),
   } as React.CSSProperties;
-  const ensureUrlProtocol = (value: string) => {
-    const trimmed = value?.trim() ?? '';
-    if (!trimmed) return '';
-    if (/^[a-z]+:/i.test(trimmed)) return trimmed;
-    return `https://${trimmed}`;
-  };
-  const looksLikeUrl = (value: string) => {
-    const trimmed = value?.trim() ?? '';
-    if (!trimmed) return false;
-    return /^(https?:\/\/|www\.)/i.test(trimmed);
-  };
-  const formatTelHref = (value: string) => {
-    const trimmed = value?.trim() ?? '';
-    if (!trimmed) return '';
-    const normalized = trimmed.replace(/[^+\d]/g, '');
-    return normalized || trimmed;
-  };
-  const normalizeMarkdownHref = (href?: string) => {
-    const trimmed = href?.trim() ?? '';
-    if (!trimmed) return '';
-    if (trimmed.startsWith('#')) return trimmed;
-    return ensureUrlProtocol(trimmed);
-  };
-  const renderExternalLink = (
-    value: string,
-    label?: string,
-    className = 'text-blue-600 hover:underline break-all',
-  ) => {
-    const href = ensureUrlProtocol(value);
-    if (!href) return null;
-    return (
-      <a href={href} target="_blank" rel="noreferrer" className={className}>
-        {label ?? value}
-      </a>
-    );
-  };
-  const markdownComponents: Components = {
-    a({ node: _node, href, children, className, ...props }) {
-      const safeHref = normalizeMarkdownHref(href);
-      if (!safeHref) {
-        return <span {...props}>{children}</span>;
-      }
-      const combinedClassName = ['text-blue-600 hover:underline', className]
-        .filter(Boolean)
-        .join(' ');
-      return (
-        <a
-          {...props}
-          href={safeHref}
-          target="_blank"
-          rel="noreferrer"
-          className={combinedClassName}
-        >
-          {children}
-        </a>
-      );
-    },
-  };
 
   const contentStyles: React.CSSProperties = {
-    height: isPrinting ? 'auto' : '100%',
+    height: printMode ? 'auto' : '100%',
     ...fontVariableStyles,
   };
 
-  if (!isPrinting) {
+  if (!printMode) {
     contentStyles.transform = `translateY(-${pageShift}px)`;
   }
 
@@ -320,7 +413,8 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
         ref={viewportRef}
         className="flex-1 overflow-hidden print:h-auto print:overflow-visible"
         style={{
-          height: displayPageHeight || PRINT_PAGE_HEIGHT,
+          height: printMode ? 'auto' : displayPageHeight || PRINT_PAGE_HEIGHT,
+          overflow: printMode ? 'visible' : undefined,
         }}
       >
         <div
@@ -328,81 +422,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({ cv, fontSettings }) => {
           className="cv-preview-content flex flex-col text-xs leading-relaxed text-slate-900 transition-transform duration-200 print:transition-none"
           style={contentStyles}
         >
-      {/* Header */}
-      <div className="flex flex-col gap-4 border-b border-slate-200 pb-3 sm:flex-row sm:items-center sm:gap-[0.9rem]">
-        <div className="flex items-center gap-4">
-          {personalInfo.photoDataUrl && (
-            <div className="h-16 w-16 overflow-hidden rounded-full bg-slate-100">
-              <img
-                src={personalInfo.photoDataUrl}
-                alt={personalInfo.fullName || 'Profile photo'}
-                className="h-full w-full object-cover"
-              />
-            </div>
-          )}
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900">
-              {personalInfo.fullName || 'Your full name'}
-            </h1>
-            <p className="text-[11px] text-slate-500">
-              {personalInfo.jobTitle || 'Job title or professional headline'}
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-1 justify-end">
-          <div className="grid w-full max-w-md grid-cols-1 gap-1 text-[11px] text-slate-600 sm:grid-cols-2">
-            {personalInfo.email && (
-              <p className="truncate">
-                <span className="font-medium text-slate-700">Email:</span>{' '}
-                <a
-                  href={`mailto:${personalInfo.email.trim()}`}
-                  className="break-all text-blue-600 hover:underline"
-                >
-                  {personalInfo.email}
-                </a>
-              </p>
-            )}
-            {personalInfo.phone && (
-              <p className="truncate">
-                <span className="font-medium text-slate-700">Phone:</span>{' '}
-                <a
-                  href={`tel:${formatTelHref(personalInfo.phone)}`}
-                  className="break-all text-blue-600 hover:underline"
-                >
-                  {personalInfo.phone}
-                </a>
-              </p>
-            )}
-            {personalInfo.location && (
-              <p className="truncate">
-                <span className="font-medium text-slate-700">Location:</span>{' '}
-                {personalInfo.location}
-              </p>
-            )}
-            {ensureUrlProtocol(personalInfo.website) && (
-              <p className="break-all">
-                <span className="font-medium text-slate-700">Portfolio:</span>{' '}
-                {renderExternalLink(personalInfo.website)}
-              </p>
-            )}
-            {ensureUrlProtocol(personalInfo.linkedin) && (
-              <p className="break-all">
-                <span className="font-medium text-slate-700">LinkedIn:</span>{' '}
-                {renderExternalLink(personalInfo.linkedin, personalInfo.linkedin)}
-              </p>
-            )}
-            {!personalInfo.email &&
-              !personalInfo.phone &&
-              !personalInfo.location &&
-              !personalInfo.website &&
-              !personalInfo.linkedin && (
-                <p className="text-[11px] text-slate-400">
-                  Add your contact details to show them here.
-                </p>
-              )}
-          </div>
-        </div>
-      </div>
+          <CvHeader personalInfo={personalInfo} />
 
       <div className="mt-4 space-y-4">
         {personalInfo.summary && (

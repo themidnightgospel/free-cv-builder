@@ -1,16 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDownTrayIcon, TrashIcon } from '@heroicons/react/24/outline';
-import type {
-  CvData,
-  CvSectionKey,
-  EducationEntry,
-  ExperienceEntry,
-  PersonalInfo,
-  SectionId,
-  ProjectEntry,
-  AchievementEntry,
-  FontSettings,
-} from './types';
+import { ungzip, inflate } from 'pako';
+import type { CvData, CvSectionKey, FontSettings, SectionId } from './types';
 import { PersonalInfoForm } from './components/PersonalInfoForm';
 import { ExperienceForm } from './components/ExperienceForm';
 import { EducationForm } from './components/EducationForm';
@@ -25,6 +16,44 @@ import { VolunteerForm } from './components/VolunteerForm';
 import { OpenSourceForm } from './components/OpenSourceForm';
 import { LanguagesForm } from './components/LanguagesForm';
 import { useConfirmDialog } from './components/ConfirmDialogProvider';
+import { encodeCvPayloadForText } from './pdf/encodeCvPayload';
+import {
+  bytesToBinaryString,
+  decodeEmbeddedCvPayload,
+  extractChunkedPayloadFromText,
+  loadPdfJs,
+} from './pdf/pdfExtraction';
+import { PdfPayloadPortal, PdfPayloadPrintBlock } from './pdf/PdfPayloadEmbed';
+import {
+  CURRENT_CV_ID_STORAGE_KEY,
+  getCvDisplayName,
+  type SavedCvRecord,
+} from './state/cvStorage';
+import {
+  createEmptyAchievement,
+  createEmptyEducation,
+  createEmptyExperience,
+  createEmptyProject,
+  createInitialCv,
+  hasMeaningfulAchievements,
+  hasMeaningfulEducation,
+  hasMeaningfulExperience,
+  hasMeaningfulProjects,
+  hasMeaningfulVolunteer,
+  isCustomSectionId,
+  normalizeCvData,
+  sectionLabel,
+  validatePersonalInfo,
+} from './state/cvModel';
+import { useToast } from './components/toast/ToastProvider';
+import {
+  persistCurrentCvId,
+  readSavedCvsFromStorage,
+  writeSavedCvsToStorage,
+  useCvPersistence,
+} from './state/useCvPersistence';
+import { usePdfExport } from './pdf/usePdfExport';
+import { createSampleCv } from './state/sampleCv';
 
 declare global {
   interface Window {
@@ -32,505 +61,8 @@ declare global {
   }
 }
 
-const createEmptyPersonalInfo = (): PersonalInfo => ({
-  fullName: '',
-  jobTitle: '',
-  summary: '',
-  email: '',
-  phone: '',
-  location: '',
-  website: '',
-  linkedin: '',
-  photoDataUrl: null,
-});
-
-const createEmptyExperience = (): ExperienceEntry => ({
-  id: crypto.randomUUID(),
-  jobTitle: '',
-  company: '',
-  location: '',
-  startDate: '',
-  endDate: '',
-  isCurrent: false,
-  description: '',
-});
-
-const createEmptyEducation = (): EducationEntry => ({
-  id: crypto.randomUUID(),
-  degree: '',
-  institution: '',
-  location: '',
-  startYear: '',
-  endYear: '',
-  isCurrent: false,
-  description: '',
-});
-
-const createEmptyProject = (): ProjectEntry => ({
-  id: crypto.randomUUID(),
-  name: '',
-  role: '',
-  techStack: '',
-  description: '',
-  achievements: '',
-  link: '',
-});
-
-const createEmptyAchievement = (): AchievementEntry => ({
-  id: crypto.randomUUID(),
-  name: '',
-  organization: '',
-  date: '',
-  context: '',
-});
-
-const createInitialCv = (): CvData => ({
-  personalInfo: createEmptyPersonalInfo(),
-  experience: [createEmptyExperience()],
-  education: [createEmptyEducation()],
-  projects: [createEmptyProject()],
-  achievements: [createEmptyAchievement()],
-  publications: [],
-  talks: [],
-  volunteer: [],
-  openSource: [],
-  skills: [],
-  languages: [],
-  customSections: [],
-  sectionsOrder: [
-    'personal',
-    'experience',
-    'projects',
-    'education',
-    'skills',
-    'languages',
-    'volunteer',
-    'opensource',
-    'achievements',
-    'publications',
-    'talks',
-  ],
-});
-
-const createSampleCv = (): CvData => {
-  const makeId = () => crypto.randomUUID();
-  const customSections = [
-    {
-      id: makeId(),
-      title: 'Community Leadership',
-      body: `### Community Programs
-- Organized quarterly meetups focused on accessibility testing.
-- Built a mentorship circle pairing mid-level engineers with students.`,
-    },
-    {
-      id: makeId(),
-      title: 'Professional Development',
-      body: `- Mentor three junior engineers through monthly growth sessions.
-- Curate a \"What’s New in Frontend\" internal newsletter every sprint.`,
-    },
-  ];
-  const customSectionIds: SectionId[] = customSections.map(
-    (section) => `custom:${section.id}` as SectionId,
-  );
-
-  return {
-    personalInfo: {
-      fullName: 'Jordan Rivera',
-      jobTitle: 'Senior Frontend Engineer',
-      summary:
-        'Product-minded engineer with a focus on accessibility, design systems, and data visualization for SaaS platforms.',
-      email: 'jordan.rivera@example.com',
-      phone: '+1 (555) 000-1234',
-      location: 'Remote / NYC timezone',
-      website: 'https://jordanrivera.dev',
-      linkedin: 'https://www.linkedin.com/in/jordanrivera',
-      photoDataUrl: null,
-    },
-    experience: [
-      {
-        id: makeId(),
-        jobTitle: 'Lead Frontend Engineer',
-        company: 'Aurora Analytics',
-        location: 'Remote',
-        startDate: 'Mar 2021',
-        endDate: '',
-        isCurrent: true,
-        description:
-          '- Own the company design system and accessibility guidelines.\n- Partner with PMs to ship experimentation tooling used by 45+ teams.',
-      },
-      {
-        id: makeId(),
-        jobTitle: 'Senior UI Engineer',
-        company: 'Northwind Labs',
-        location: 'Austin, TX',
-        startDate: 'Jan 2018',
-        endDate: 'Feb 2021',
-        isCurrent: false,
-        description:
-          '- Implemented streaming dashboards for IoT fleet metrics.\n- Lifted Lighthouse performance scores from 68 to 94.',
-      },
-      {
-        id: makeId(),
-        jobTitle: 'Frontend Chapter Lead',
-        company: 'Summit HR',
-        location: 'Denver, CO',
-        startDate: 'Mar 2016',
-        endDate: 'Dec 2017',
-        isCurrent: false,
-        description:
-          '- Led a guild of 14 engineers focusing on design system adoption.\n- Shipped internal UI kit used by recruiting pods worldwide.',
-      },
-      {
-        id: makeId(),
-        jobTitle: 'Product Engineer',
-        company: 'Beacon CRM',
-        location: 'Remote',
-        startDate: 'May 2014',
-        endDate: 'Feb 2016',
-        isCurrent: false,
-        description:
-          '- Built reporting dashboards that increased CSAT visibility.\n- Partnered with PMs to run weekly customer feedback sessions.',
-      },
-      {
-        id: makeId(),
-        jobTitle: 'UI Engineer II',
-        company: 'Hudson Analytics',
-        location: 'Chicago, IL',
-        startDate: 'Jun 2012',
-        endDate: 'Apr 2014',
-        isCurrent: false,
-        description:
-          '- Migrated legacy Backbone flows to React without downtime.\n- Authored accessibility checklist adopted across the org.',
-      },
-      {
-        id: makeId(),
-        jobTitle: 'Frontend Engineer',
-        company: 'Brightside Media',
-        location: 'Seattle, WA',
-        startDate: 'Jul 2010',
-        endDate: 'May 2012',
-        isCurrent: false,
-        description:
-          '- Created marketing landing page generator powering 200+ launches.\n- Introduced performance budgets and bundle analysis tooling.',
-      },
-      {
-        id: makeId(),
-        jobTitle: 'Web Developer',
-        company: 'PixelSmith Studio',
-        location: 'Portland, OR',
-        startDate: 'Jun 2009',
-        endDate: 'Jun 2010',
-        isCurrent: false,
-        description:
-          '- Built client microsites with custom CMS widgets.\n- Mentored two interns on semantic HTML and CSS architecture.',
-      },
-      {
-        id: makeId(),
-        jobTitle: 'Junior Developer',
-        company: 'InnoTech Labs',
-        location: 'San Diego, CA',
-        startDate: 'Aug 2007',
-        endDate: 'May 2009',
-        isCurrent: false,
-        description:
-          '- Coded UI components for medical device dashboards.\n- Wrote regression suites covering mission-critical workflows.',
-      },
-    ],
-    education: [
-      {
-        id: makeId(),
-        degree: 'B.S. Computer Science',
-        institution: 'University of Washington',
-        location: 'Seattle, WA',
-        startYear: '2012',
-        endYear: '2016',
-        isCurrent: false,
-        description:
-          'Concentration in Human-Computer Interaction. Minor in Design.',
-      },
-    ],
-    projects: [
-      {
-        id: makeId(),
-        name: 'CaseBuilder',
-        role: 'Product Engineer',
-        techStack: 'React, Zustand, Tailwind',
-        description:
-          'Workflow builder for legal teams drafting repeatable case packets.',
-        achievements:
-          '- Cut drafting time by 60%\n- Adopted by 12 enterprise law firms within 6 months',
-        link: 'https://casebuilder.app',
-      },
-    ],
-    achievements: [
-      {
-        id: makeId(),
-        name: 'Grace Hopper Scholar',
-        organization: 'AnitaB.org',
-        date: '2023',
-        context:
-          'Selected for contributions to inclusive developer tooling initiatives.',
-      },
-    ],
-    publications: [
-      {
-        id: makeId(),
-        title: 'Design Systems that Scale',
-        venue: 'Frontend Futures Magazine',
-        year: '2024',
-        coAuthors: 'Ava Patel',
-        link: 'https://frontendfutures.dev/design-systems',
-      },
-    ],
-    talks: [
-      {
-        id: makeId(),
-        title: 'Measuring UX in Developer Tools',
-        event: 'React Summit',
-        date: 'Jun 2024',
-        role: 'Speaker',
-        locationOrLink: 'Amsterdam / livestream replay',
-      },
-    ],
-    volunteer: [
-      {
-        id: makeId(),
-        organization: 'Girls Who Code',
-        role: 'Mentor',
-        location: 'Remote',
-        startDate: '2022',
-        endDate: '',
-        isCurrent: true,
-        responsibilities:
-          '- Lead weekly sessions for twelve high-school students.\n- Designed project-based curriculum covering JS fundamentals.',
-      },
-    ],
-    openSource: [
-      {
-        id: makeId(),
-        name: 'Prisma Dashboard',
-        role: 'Maintainer',
-        techStack: 'Next.js, GraphQL, Prisma',
-        description: 'Extensible admin UI for inspecting Prisma schemas.',
-        achievements:
-          '- Added real-time query console\n- Introduced plugin API adopted by community contributors',
-        link: 'https://github.com/jordanrivera/prisma-dashboard',
-      },
-    ],
-    skills: [
-      { id: makeId(), name: 'TypeScript', level: 'Advanced' },
-      { id: makeId(), name: 'React', level: 'Advanced' },
-      { id: makeId(), name: 'Node.js', level: 'Intermediate' },
-      { id: makeId(), name: 'Design Systems', level: 'Advanced' },
-    ],
-    languages: [
-      { id: makeId(), name: 'English', level: 'Native' },
-      { id: makeId(), name: 'Spanish', level: 'Professional' },
-    ],
-    customSections,
-    sectionsOrder: [
-      'personal',
-      'experience',
-      'projects',
-      'education',
-      'skills',
-      'languages',
-      'volunteer',
-      'opensource',
-      'achievements',
-      'publications',
-      'talks',
-      ...customSectionIds,
-    ],
-  };
-};
-
-const SAVED_CVS_STORAGE_KEY = 'freeCvBuilder:savedCvFiles';
-const CURRENT_CV_ID_STORAGE_KEY = 'freeCvBuilder:currentCvId';
-
-interface SavedCvRecord {
-  id: string;
-  name: string;
-  updatedAt: number;
-  cv: CvData;
-}
-
-const readSavedCvsFromStorage = (): SavedCvRecord[] => {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = window.localStorage.getItem(SAVED_CVS_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map((entry) => {
-        if (
-          !isRecord(entry) ||
-          typeof entry.id !== 'string' ||
-          typeof entry.name !== 'string' ||
-          typeof entry.updatedAt !== 'number' ||
-          !isRecord(entry.cv)
-        ) {
-          return null;
-        }
-        return entry as unknown as SavedCvRecord;
-      })
-      .filter((entry): entry is SavedCvRecord => Boolean(entry));
-  } catch (error) {
-    console.error('Failed to read saved CVs', error);
-    return [];
-  }
-};
-
-const writeSavedCvsToStorage = (records: SavedCvRecord[]) => {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(
-      SAVED_CVS_STORAGE_KEY,
-      JSON.stringify(records),
-    );
-  } catch (error) {
-    console.error('Failed to persist CVs', error);
-  }
-};
-
-const persistCurrentCvId = (id: string) => {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(CURRENT_CV_ID_STORAGE_KEY, id);
-  } catch (error) {
-    console.error('Failed to store current CV id', error);
-  }
-};
-
-const getCvDisplayName = (data: CvData): string =>
-  data.personalInfo.fullName.trim() || 'Untitled CV';
-
-const createJsonFilename = (name?: string): string => {
-  const base = name?.trim().toLowerCase().replace(/[^a-z0-9]+/gi, '-') ?? '';
-  const sanitized = base.replace(/^-+|-+$/g, '') || 'my-cv';
-  return `${sanitized}.json`;
-};
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
-
-const normalizeSectionsOrder = (
-  value: unknown,
-  fallback: SectionId[],
-): SectionId[] => {
-  if (!Array.isArray(value)) return fallback;
-  const sanitized = value.filter(
-    (section): section is SectionId => typeof section === 'string',
-  );
-  return sanitized.length > 0 ? sanitized : fallback;
-};
-
-type CvArrayKey =
-  | 'experience'
-  | 'education'
-  | 'projects'
-  | 'achievements'
-  | 'publications'
-  | 'talks'
-  | 'volunteer'
-  | 'openSource'
-  | 'skills'
-  | 'languages'
-  | 'customSections';
-
-const normalizeCvData = (value: unknown): CvData | null => {
-  if (!isRecord(value)) return null;
-  const base = createInitialCv();
-  const candidate = value as Partial<CvData>;
-  const personalInfo = isRecord(candidate.personalInfo)
-    ? ({
-        ...base.personalInfo,
-        ...(candidate.personalInfo as PersonalInfo),
-      } as PersonalInfo)
-    : base.personalInfo;
-  const pickArray = <K extends CvArrayKey>(key: K): CvData[K] => {
-    const candidateValue = candidate[key];
-    if (Array.isArray(candidateValue)) {
-      return candidateValue as CvData[K];
-    }
-    return base[key];
-  };
-
-  return {
-    personalInfo,
-    experience: pickArray('experience'),
-    education: pickArray('education'),
-    projects: pickArray('projects'),
-    achievements: pickArray('achievements'),
-    publications: pickArray('publications'),
-    talks: pickArray('talks'),
-    volunteer: pickArray('volunteer'),
-    openSource: pickArray('openSource'),
-    skills: pickArray('skills'),
-    languages: pickArray('languages'),
-    customSections: pickArray('customSections'),
-    sectionsOrder: normalizeSectionsOrder(
-      candidate.sectionsOrder,
-      base.sectionsOrder,
-    ),
-  };
-};
-
-const validatePersonalInfo = (personalInfo: PersonalInfo) => {
-  const errors: string[] = [];
-  if (!personalInfo.fullName.trim()) {
-    errors.push('Full name is required.');
-  }
-  if (!personalInfo.email.trim()) {
-    errors.push('Email is required.');
-  } else {
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(personalInfo.email)) {
-      errors.push('Email format is invalid.');
-    }
-  }
-  return { isValid: errors.length === 0, errors };
-};
-
-const hasMeaningfulExperience = (experience: ExperienceEntry[]): boolean =>
-  experience.some((e) => e.jobTitle.trim() && e.company.trim());
-
-const hasMeaningfulEducation = (education: EducationEntry[]): boolean =>
-  education.some((e) => e.degree.trim() && e.institution.trim());
-
-const hasMeaningfulProjects = (projects: ProjectEntry[]): boolean =>
-  projects.some((p) => p.name.trim() && p.role.trim());
-
-const hasMeaningfulAchievements = (achievements: AchievementEntry[]): boolean =>
-  achievements.some((a) => a.name.trim() && a.organization.trim());
-
-const hasMeaningfulVolunteer = (volunteer: CvData['volunteer']): boolean =>
-  volunteer.some((v) => v.organization.trim() && v.role.trim());
-
-const sectionLabel: Record<CvSectionKey, string> = {
-  personal: 'Personal Info',
-  experience: 'Experience',
-  education: 'Education',
-  projects: 'Projects',
-  achievements: 'Achievements / Awards',
-  publications: 'Publications',
-  talks: 'Talks / Conferences',
-  volunteer: 'Volunteer Experience',
-  opensource: 'Open Source',
-  skills: 'Skills',
-  languages: 'Languages',
-};
-
-const isCustomSectionId = (
-  sectionId: SectionId,
-): sectionId is `custom:${string}` => sectionId.startsWith('custom:');
-
-interface Toast {
-  id: number;
-  message: string;
-  type: 'success' | 'error' | 'info';
-}
+const PREVIEW_SURFACE_CLASSNAMES =
+  'relative mx-auto aspect-[1/1.4142] w-full max-w-full bg-white shadow-sm border border-slate-200 px-8 py-6 text-slate-900 print:mx-0 print:w-full print:max-w-none print:shadow-none print:border-0 print:max-h-none print:aspect-auto print:p-8';
 
 export const App: React.FC = () => {
   const [mode, setMode] = useState<'landing' | 'editor'>('landing');
@@ -538,20 +70,23 @@ export const App: React.FC = () => {
   const [activeSection, setActiveSection] = useState<SectionId>('personal');
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [isPreparingPdf, setIsPreparingPdf] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [importError, setImportError] = useState<string | null>(null);
   const [draggingSectionId, setDraggingSectionId] = useState<SectionId | null>(
     null,
   );
   const [activeWorkspaceView, setActiveWorkspaceView] = useState<
     'sections' | 'preview'
   >('sections');
-  const [currentCvId, setCurrentCvId] = useState<string>(() =>
-    crypto.randomUUID(),
-  );
-  const [savedCvs, setSavedCvs] = useState<SavedCvRecord[]>([]);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const confirmDialog = useConfirmDialog();
+  const { addToast } = useToast();
+  const {
+    currentCvId,
+    savedCvs,
+    hasUnsavedChanges,
+    setCurrentCvId,
+    setSavedCvs,
+  } = useCvPersistence(cv, mode);
+  const { isPreparingPdf, pendingPrintJob, downloadCvPdf } = usePdfExport(addToast);
   const defaultFontSettings: FontSettings = {
     fullName: 28,
     sectionTitle: 12,
@@ -561,9 +96,27 @@ export const App: React.FC = () => {
   const [fontSettings, setFontSettings] = useState<FontSettings>({
     ...defaultFontSettings,
   });
-  const jsonUploadInputRef = useRef<HTMLInputElement>(null);
-  const saveTimeoutRef = useRef<number | null>(null);
-  const skipInitialPersistRef = useRef(true);
+  const cvUploadInputRef = useRef<HTMLInputElement>(null);
+  const activeCvEmbeddedPayload = useMemo(() => {
+    try {
+      return encodeCvPayloadForText(cv);
+    } catch (error) {
+      console.error(error);
+      return '';
+    }
+  }, [cv]);
+  const printJobEmbeddedPayload = useMemo(() => {
+    if (!pendingPrintJob) return '';
+    try {
+      return encodeCvPayloadForText(pendingPrintJob.cv);
+    } catch (error) {
+      console.error(error);
+      return '';
+    }
+  }, [pendingPrintJob]);
+  const printablePayload = pendingPrintJob
+    ? printJobEmbeddedPayload
+    : activeCvEmbeddedPayload;
   const fontControls: {
     key: keyof FontSettings;
     label: string;
@@ -652,92 +205,225 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
-    if (skipInitialPersistRef.current) {
-      skipInitialPersistRef.current = false;
-      return;
+  const importCvFromJsonText = (jsonText: string, sourceLabel: string) => {
+    const parsed = JSON.parse(jsonText);
+    const normalized = normalizeCvData(parsed);
+    if (!normalized) {
+      throw new Error('Invalid CV JSON structure');
     }
-    if (mode !== 'editor') {
-      if (typeof window !== 'undefined' && saveTimeoutRef.current) {
-        window.clearTimeout(saveTimeoutRef.current);
-        saveTimeoutRef.current = null;
-      }
-      setHasUnsavedChanges(false);
-      return;
-    }
-    if (typeof window === 'undefined') return;
-    if (!currentCvId) return;
-    setHasUnsavedChanges(true);
-    if (saveTimeoutRef.current) {
-      window.clearTimeout(saveTimeoutRef.current);
-    }
-    saveTimeoutRef.current = window.setTimeout(() => {
-      const records = readSavedCvsFromStorage();
-      const entry: SavedCvRecord = {
-        id: currentCvId,
-        name: getCvDisplayName(cv),
-        updatedAt: Date.now(),
-        cv,
-      };
-      const existingIndex = records.findIndex(
-        (record) => record.id === currentCvId,
-      );
-      const nextRecords =
-        existingIndex >= 0
-          ? [
-              ...records.slice(0, existingIndex),
-              entry,
-              ...records.slice(existingIndex + 1),
-            ]
-          : [...records, entry];
-      writeSavedCvsToStorage(nextRecords);
-      persistCurrentCvId(currentCvId);
-      setSavedCvs(nextRecords);
-      setHasUnsavedChanges(false);
-      saveTimeoutRef.current = null;
-    }, 2000);
-    return () => {
-      if (saveTimeoutRef.current) {
-        window.clearTimeout(saveTimeoutRef.current);
-        saveTimeoutRef.current = null;
-      }
-    };
-  }, [cv, currentCvId, mode]);
-
-  const handleImportJson = async (file: File) => {
-    try {
-      const text = await file.text();
-      const parsed = JSON.parse(text);
-      const normalized = normalizeCvData(parsed);
-      if (!normalized) {
-        throw new Error('Invalid CV JSON structure');
-      }
-      const newId = crypto.randomUUID();
-      setCurrentCvId(newId);
-      persistCurrentCvId(newId);
-      setCv(normalized);
-      setMode('editor');
-      setActiveSection('personal');
-      setActiveWorkspaceView('sections');
-      setShowValidationModal(false);
-      setValidationErrors([]);
-      addToast('CV loaded from JSON file.', 'success');
-    } catch (error) {
-      console.error(error);
-      addToast(
-        'Could not import JSON. Please use a file exported from this builder.',
-        'error',
-      );
-    }
+    const newId = crypto.randomUUID();
+    setCurrentCvId(newId);
+    persistCurrentCvId(newId);
+    setCv(normalized);
+    setMode('editor');
+    setActiveSection('personal');
+    setActiveWorkspaceView('sections');
+    setShowValidationModal(false);
+    setValidationErrors([]);
+    addToast(`CV loaded from ${sourceLabel}.`, 'success');
   };
 
-  const handleJsonUploadChange = async (
+  const handlePdfUploadChange = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    await handleImportJson(file);
-    event.target.value = '';
+    try {
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      const textContentRaw = bytesToBinaryString(bytes);
+
+      let pdfJsText: string | null = null;
+      try {
+        const pdfjs = await loadPdfJs();
+        const doc = await pdfjs.getDocument({
+          data: bytes,
+        }).promise;
+        let extractedText = '';
+        for (let pageIndex = 1; pageIndex <= doc.numPages; pageIndex += 1) {
+          const page = await doc.getPage(pageIndex);
+          const content = await page.getTextContent();
+          extractedText += content.items
+            .map((item: any) => ('str' in item ? item.str : ''))
+            .join(' ');
+        }
+        pdfJsText = extractedText;
+      } catch (pdfJsError) {
+        console.error(
+          'Unable to extract PDF text layer via pdf.js',
+          pdfJsError,
+        );
+      }
+
+      const textContent = pdfJsText || textContentRaw;
+      const normalizedTextContent = textContent.replace(/\s+/g, '');
+      const normalizedAsciiTextContent = normalizedTextContent.replace(
+        /[\u200B-\u200D\uFEFF]/g,
+        '',
+      );
+      const asciiTextContent = textContent.replace(/[^\x20-\x7E]/g, '');
+      const asciiNormalized = asciiTextContent.replace(/\s+/g, '');
+      const alnumOnly = textContent.replace(/[^A-Za-z0-9{}\[\]":,._-]/g, '');
+      const alnumNormalized = alnumOnly.replace(/\s+/g, '');
+
+      const tryExtractFromText = (source: string): string | null => {
+        // Prefer new chunked payload format.
+        const fromChunks = extractChunkedPayloadFromText(source);
+        if (fromChunks) return fromChunks;
+
+        // Legacy marker-based format for backward compatibility.
+        const legacyStart = 'FREECVBUILDER_JSON_TEXT_START';
+        const legacyEnd = 'FREECVBUILDER_JSON_TEXT_END';
+        const expand = (marker: string) =>
+          marker
+            .split('')
+            .map((ch) => `${ch}[\\s\\u200B-\\u200D\\uFEFF]*`)
+            .join('');
+        const regex = new RegExp(
+          `${expand(legacyStart)}([\\s\\S]*?)${expand(legacyEnd)}`,
+          'gi',
+        );
+
+        let match: RegExpExecArray | null;
+        // eslint-disable-next-line no-cond-assign
+        while ((match = regex.exec(source)) !== null) {
+          const rawPayload = match[1];
+          const cleaned = rawPayload
+            .replace(/[\u200B-\u200D\uFEFF]/g, '')
+            .trim();
+          if (!cleaned) continue;
+          try {
+            JSON.parse(cleaned);
+            return cleaned;
+          } catch {
+            try {
+              const decoded = decodeEmbeddedCvPayload(cleaned);
+              JSON.parse(decoded);
+              return decoded;
+            } catch {
+              // Try the next match.
+            }
+          }
+        }
+
+        return null;
+      };
+
+      const tryExtractFromPdfStreamContent = (
+        content: string,
+      ): string | null => {
+        const direct = tryExtractFromText(content);
+        if (direct) return direct;
+        const stringLiterals = Array.from(content.matchAll(/\\((.*?)\\)/gs)).map(
+          (match) => match[1],
+        );
+        if (stringLiterals.length) {
+          const joined = stringLiterals.join('');
+          const fromJoined = tryExtractFromText(joined);
+          if (fromJoined) return fromJoined;
+          const squeezed = joined.replace(/[^A-Za-z0-9{}\\[\\]\":,._-]/g, '');
+          const fromSqueezed = tryExtractFromText(squeezed);
+          if (fromSqueezed) return fromSqueezed;
+        }
+        return null;
+      };
+
+      let jsonText: string | null = null;
+      const candidateSources = [
+        textContent,
+        asciiTextContent,
+        normalizedTextContent,
+        normalizedAsciiTextContent,
+        asciiNormalized,
+        alnumOnly,
+        alnumNormalized,
+      ];
+      for (const candidate of candidateSources) {
+        jsonText = tryExtractFromText(candidate);
+        if (jsonText) break;
+      }
+
+      if (!jsonText) {
+            const decoder = new TextDecoder('latin1');
+            const text = decoder.decode(bytes);
+            const streamKeyword = 'stream';
+            const endstreamKeyword = 'endstream';
+
+            let searchIndex = 0;
+
+            while (true) {
+              const streamIndex = text.indexOf(streamKeyword, searchIndex);
+              if (streamIndex === -1) break;
+
+              let dataStart =
+                streamIndex + streamKeyword.length;
+              if (text[dataStart] === '\r' && text[dataStart + 1] === '\n') {
+                dataStart += 2;
+              } else if (text[dataStart] === '\n') {
+                dataStart += 1;
+              }
+
+              const endIndex = text.indexOf(endstreamKeyword, dataStart);
+              if (endIndex === -1) break;
+
+              const streamBytes = bytes.subarray(dataStart, endIndex);
+
+              try {
+                const decompressed = inflate(streamBytes, {
+                  to: 'string',
+                }) as string;
+                const candidate = tryExtractFromPdfStreamContent(decompressed);
+                if (candidate) {
+                  jsonText = candidate;
+                  break;
+                }
+              } catch {
+                // Ignore streams that are not Flate-compressed text.
+              }
+
+              searchIndex = endIndex + endstreamKeyword.length;
+            }
+
+            if (!jsonText) {
+              try {
+                const pdfjs = await loadPdfJs();
+                const doc = await pdfjs.getDocument({
+                  data: bytes,
+                }).promise;
+                let extractedText = '';
+                for (let pageIndex = 1; pageIndex <= doc.numPages; pageIndex += 1) {
+                  const page = await doc.getPage(pageIndex);
+                  const content = await page.getTextContent();
+                  extractedText += content.items
+                    .map((item: any) => ('str' in item ? item.str : ''))
+                    .join(' ');
+                }
+                const fromPdfjs = tryExtractFromText(extractedText);
+                if (fromPdfjs) {
+                  jsonText = fromPdfjs;
+                }
+              } catch (pdfJsError) {
+                console.error('Unable to extract PDF payload via pdf.js', pdfJsError);
+              }
+            }
+          }
+
+          if (!jsonText) {
+            setImportError(
+              'This CV must be created using Free CV Builder. Please upload a PDF exported from Free CV Builder.',
+        );
+        return;
+      }
+
+      importCvFromJsonText(jsonText, 'PDF file');
+    } catch (error) {
+      console.error(error);
+      setImportError(
+        'This CV must be created using Free CV Builder. Please upload a PDF exported from Free CV Builder.',
+      );
+    } finally {
+      event.target.value = '';
+    }
   };
 
   const sectionStatuses = useMemo(() => {
@@ -785,14 +471,6 @@ export const App: React.FC = () => {
       languages: cv.languages.length > 0 ? 'valid' : 'empty',
     } as const;
   }, [cv]);
-
-  const addToast = (message: string, type: Toast['type'] = 'info') => {
-    const id = Date.now();
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 2000);
-  };
 
   const handleCreateNew = () => {
     const newId = crypto.randomUUID();
@@ -867,38 +545,11 @@ export const App: React.FC = () => {
     });
   };
 
-  const downloadCvJson = (data: CvData, filenameHint?: string) => {
-    try {
-      const filename = createJsonFilename(
-        filenameHint || getCvDisplayName(data),
-      );
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: 'application/json',
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-      addToast(`CV data downloaded as ${filename}.`, 'success');
-    } catch (error) {
-      console.error(error);
-      addToast('Could not generate JSON. Try again.', 'error');
-    }
-  };
-
-  const handleDownloadJson = () => {
-    downloadCvJson(cv, getCvDisplayName(cv));
-  };
-
   const handleDownloadSavedCv = (record: SavedCvRecord) => {
-    downloadCvJson(record.cv, record.name);
+    void downloadCvPdf(record.cv, record.name);
   };
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     const personalValidation = validatePersonalInfo(cv.personalInfo);
     if (!personalValidation.isValid) {
       setValidationErrors([
@@ -916,19 +567,7 @@ export const App: React.FC = () => {
     }
     warnings.forEach((message) => addToast(message, 'info'));
 
-    const originalTitle = document.title;
-    const normalizedName =
-      cv.personalInfo.fullName.trim().toLowerCase().replace(/\s+/g, '-') ||
-      'my-cv';
-    document.title = `${normalizedName}-cv`;
-
-    setIsPreparingPdf(true);
-    setTimeout(() => {
-      window.print();
-      setIsPreparingPdf(false);
-      document.title = originalTitle;
-      addToast("PDF ready. Use 'Save as PDF' in the dialog.", 'success');
-    }, 100);
+    await downloadCvPdf(cv, getCvDisplayName(cv));
   };
 
   const handlePhotoUpload = (file: File) => {
@@ -944,6 +583,26 @@ export const App: React.FC = () => {
     };
     reader.readAsDataURL(file);
   };
+
+  const importErrorModal = importError && (
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/30">
+      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
+        <h2 className="mb-2 text-base font-semibold text-slate-900">
+          Cannot load CV from PDF
+        </h2>
+        <p className="mb-4 text-sm text-slate-600">{importError}</p>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700"
+            onClick={() => setImportError(null)}
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   const header = (
     <header className="fixed inset-x-0 top-0 z-20 bg-white/90 border-b border-gray-200 shadow-sm print:hidden">
@@ -980,13 +639,6 @@ export const App: React.FC = () => {
           </span>
           <button
             type="button"
-            onClick={handleDownloadJson}
-            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-          >
-            Download JSON
-          </button>
-          <button
-            type="button"
             onClick={handleDownloadPdf}
             disabled={isPreparingPdf}
             className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
@@ -994,114 +646,141 @@ export const App: React.FC = () => {
             {isPreparingPdf ? 'Preparing PDF…' : 'Download PDF'}
           </button>
         </div>
+        {importError && (
+          <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/30">
+            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
+              <h2 className="mb-2 text-base font-semibold text-slate-900">
+                Cannot load CV from PDF
+              </h2>
+              <p className="mb-4 text-sm text-slate-600">{importError}</p>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700"
+                  onClick={() => setImportError(null)}
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </header>
   );
 
   if (mode === 'landing') {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-        <div className="w-full max-w-lg rounded-2xl bg-white shadow-sm border border-slate-200 p-8 space-y-6">
-          <div className="space-y-2 text-center">
-            <h1 className="text-2xl font-semibold text-slate-900">
-              Free CV Builder
-            </h1>
-            <p className="text-sm text-slate-600">
-              Create and download your CV, fully in your browser.
+      <>
+        <PdfPayloadPortal payload={printablePayload} />
+        <PdfPayloadPrintBlock payload={printablePayload} />
+        {importErrorModal}
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-sm border border-slate-200 p-8 space-y-6">
+            <div className="space-y-2 text-center">
+              <h1 className="text-2xl font-semibold text-slate-900">
+                Free CV Builder
+              </h1>
+              <p className="text-sm text-slate-600">
+                Create and download your CV, fully in your browser.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={handleCreateNew}
+                className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+              >
+                Create new CV
+              </button>
+              <button
+                type="button"
+                onClick={() => cvUploadInputRef.current?.click()}
+                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+              >
+                Upload existing CV
+              </button>
+              <input
+                ref={cvUploadInputRef}
+                type="file"
+                accept="application/pdf,.pdf"
+                className="hidden"
+                onChange={handlePdfUploadChange}
+              />
+              {savedCvs.length > 0 && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 space-y-2">
+                  <p className="text-xs font-semibold tracking-wide text-slate-500">
+                    Saved CVs on this browser
+                  </p>
+                  <div className="space-y-2">
+                    {[...savedCvs]
+                      .sort((a, b) => b.updatedAt - a.updatedAt)
+                      .map((record) => (
+                        <div
+                          key={record.id}
+                          className="flex items-stretch gap-2"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleSelectSavedCv(record.id)}
+                            className="flex-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-left text-sm hover:border-slate-300 hover:bg-slate-50"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-slate-900">
+                                {record.name}
+                              </span>
+                              <span className="text-[11px] text-slate-400">
+                                {new Date(record.updatedAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500">
+                              Last updated{' '}
+                              {new Date(record.updatedAt).toLocaleTimeString()}
+                            </p>
+                          </button>
+                          <div className="flex flex-col gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadSavedCv(record)}
+                              className="flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-2 text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                              aria-label={`Download ${record.name} as PDF`}
+                              title="Download PDF"
+                            >
+                              <ArrowDownTrayIcon className="h-4 w-4" aria-hidden="true" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleDeleteSavedCv(record.id, record.name)
+                              }
+                              className="flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-2 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                              aria-label={`Delete ${record.name}`}
+                              title="Delete saved CV"
+                            >
+                              <TrashIcon className="h-4 w-4" aria-hidden="true" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 text-center">
+              No sign-up, no server. Your data stays in your browser.
             </p>
           </div>
-          <div className="space-y-3">
-            <button
-              type="button"
-              onClick={handleCreateNew}
-              className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
-            >
-              Create new CV
-            </button>
-            <button
-              type="button"
-              onClick={() => jsonUploadInputRef.current?.click()}
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-            >
-              Upload existing CV JSON
-            </button>
-            <input
-              ref={jsonUploadInputRef}
-              type="file"
-              accept="application/json,.json"
-              className="hidden"
-              onChange={handleJsonUploadChange}
-            />
-            {savedCvs.length > 0 && (
-              <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 space-y-2">
-                <p className="text-xs font-semibold tracking-wide text-slate-500">
-                  Saved CVs on this browser
-                </p>
-                <div className="space-y-2">
-                  {[...savedCvs]
-                    .sort((a, b) => b.updatedAt - a.updatedAt)
-                    .map((record) => (
-                      <div
-                        key={record.id}
-                        className="flex items-stretch gap-2"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => handleSelectSavedCv(record.id)}
-                          className="flex-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-left text-sm hover:border-slate-300 hover:bg-slate-50"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold text-slate-900">
-                              {record.name}
-                            </span>
-                            <span className="text-[11px] text-slate-400">
-                              {new Date(record.updatedAt).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-500">
-                            Last updated{' '}
-                            {new Date(record.updatedAt).toLocaleTimeString()}
-                          </p>
-                        </button>
-                        <div className="flex flex-col gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleDownloadSavedCv(record)}
-                            className="flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-2 text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
-                            aria-label={`Download ${record.name} as JSON`}
-                            title="Download JSON"
-                          >
-                            <ArrowDownTrayIcon className="h-4 w-4" aria-hidden="true" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleDeleteSavedCv(record.id, record.name)
-                            }
-                            className="flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-2 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-                            aria-label={`Delete ${record.name}`}
-                            title="Delete saved CV"
-                          >
-                            <TrashIcon className="h-4 w-4" aria-hidden="true" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-          </div>
-          <p className="text-xs text-slate-500 text-center">
-            No sign-up, no server. Your data stays in your browser.
-          </p>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {header}
+    <>
+      <PdfPayloadPortal payload={printablePayload} />
+      <PdfPayloadPrintBlock payload={printablePayload} />
+      <div className="min-h-screen bg-slate-50">
+        {header}
       <main className="mx-auto max-w-6xl px-4 pt-20 pb-8 print:block print:max-w-none print:px-0 print:pt-0 print:pb-0">
         <div className="mb-4 flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 p-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 shadow-sm print:hidden">
           <button
@@ -1420,7 +1099,9 @@ export const App: React.FC = () => {
         <div
           className={`mt-4 ${
             activeWorkspaceView === 'preview' ? 'block' : 'hidden'
-          } print:block print:mt-0`}
+          } ${
+            pendingPrintJob ? 'print:hidden' : 'print:block print:mt-0'
+          }`}
         >
           <div className="mx-auto max-w-4xl">
             <div className="sticky top-20 print:static print:top-auto">
@@ -1433,13 +1114,29 @@ export const App: React.FC = () => {
                 </p>
               </div>
               <div className="bg-slate-200 py-4 px-2 print:bg-transparent print:p-0">
-                <div className="mx-auto aspect-[1/1.4142] w-full max-w-full bg-white shadow-sm border border-slate-200 px-8 py-6 text-slate-900 print:mx-0 print:w-full print:max-w-none print:shadow-none print:border-0 print:max-h-none print:aspect-auto print:p-8">
+                <div className={PREVIEW_SURFACE_CLASSNAMES}>
                   <CvPreview cv={cv} fontSettings={fontSettings} />
                 </div>
               </div>
             </div>
           </div>
         </div>
+
+        {pendingPrintJob && (
+          <div className="hidden print:block" aria-hidden="true">
+            <div className="mx-auto max-w-4xl">
+              <div className="bg-slate-200 py-4 px-2 print:bg-transparent print:p-0">
+                <div className={PREVIEW_SURFACE_CLASSNAMES}>
+                  <CvPreview
+                    cv={pendingPrintJob.cv}
+                    fontSettings={fontSettings}
+                    forcePrintLayout
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Validation modal */}
         {showValidationModal && (
@@ -1479,25 +1176,29 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* Toasts */}
-        <div className="pointer-events-none fixed bottom-4 right-4 z-40 space-y-2 print:hidden">
-          {toasts.map((toast) => {
-            const base =
-              'pointer-events-auto flex items-center gap-2 rounded-md px-3 py-2 text-xs shadow-sm border';
-            const style =
-              toast.type === 'success'
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                : toast.type === 'error'
-                ? 'bg-red-50 text-red-800 border-red-200'
-                : 'bg-slate-50 text-slate-800 border-slate-200';
-            return (
-              <div key={toast.id} className={`${base} ${style}`}>
-                <span>{toast.message}</span>
+        {/* Import error modal */}
+        {importError && (
+          <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/30">
+            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
+              <h2 className="mb-2 text-base font-semibold text-slate-900">
+                Cannot load CV from PDF
+              </h2>
+              <p className="mb-4 text-sm text-slate-600">{importError}</p>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700"
+                  onClick={() => setImportError(null)}
+                >
+                  OK
+                </button>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          </div>
+        )}
+
       </main>
-    </div>
+      </div>
+    </>
   );
 };
