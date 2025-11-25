@@ -236,12 +236,12 @@ const convertImageToDataUrl = (image: any, pdfjs: any): string | null => {
   let imageData: ImageData | null = null;
 
   if (
-    (imageKind.RGBA_32 && kind === imageKind.RGBA_32) ||
+    (imageKind.RGBA_32BPP && kind === imageKind.RGBA_32BPP) ||
     rawData.length === width * height * 4
   ) {
     imageData = new ImageData(new Uint8ClampedArray(rawData), width, height);
   } else if (
-    (imageKind.RGB_24 && kind === imageKind.RGB_24) ||
+    (imageKind.RGB_24BPP && kind === imageKind.RGB_24BPP) ||
     rawData.length === width * height * 3
   ) {
     const rgba = new Uint8ClampedArray(width * height * 4);
@@ -329,28 +329,16 @@ export const extractProfileImageFromPdf = async (
     }
 
     if (xObjectNames.size > 0) {
-      await Promise.all(
-        [...xObjectNames].map(
-          (name) =>
-            new Promise<void>((resolve) => {
-              let settled = false;
-              const maybeImage = page.objs.get(name, () => {
-                if (!settled) {
-                  settled = true;
-                  resolve();
-                }
-              });
-              if (maybeImage && !settled) {
-                settled = true;
-                resolve();
-              }
-            }),
-        ),
-      );
-
       for (const name of xObjectNames) {
-        const image = page.objs.get(name);
-        pushCandidate(image, 'xobject');
+        try {
+          const image = page.objs.get(name);
+          if (image) {
+            pushCandidate(image, 'xobject');
+          }
+        } catch {
+          // If an object is not yet available or cannot be retrieved,
+          // skip it rather than risking a hang.
+        }
       }
     }
 
