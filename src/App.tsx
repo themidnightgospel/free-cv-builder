@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDownTrayIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { TrashIcon } from '@heroicons/react/24/outline';
 import type { CvData, CvSectionKey, FontSettings, SectionId } from './types';
 import { PersonalInfoForm } from './components/PersonalInfoForm';
 import { ExperienceForm } from './components/ExperienceForm';
@@ -387,10 +387,6 @@ export const App: React.FC = () => {
     });
   };
 
-  const handleDownloadSavedCv = (record: SavedCvRecord) => {
-    void downloadCvPdf(record.cv, record.name);
-  };
-
   const handleDownloadPdf = async () => {
     const personalValidation = validatePersonalInfo(cv.personalInfo);
     if (!personalValidation.isValid) {
@@ -554,6 +550,9 @@ export const App: React.FC = () => {
               >
                 Create new CV
               </button>
+              <p className="text-center text-xs font-medium text-slate-500">
+                or do you have existing cv built using buildmyfree.cv ?
+              </p>
               <button
                 type="button"
                 onClick={() => cvUploadInputRef.current?.click()}
@@ -599,16 +598,7 @@ export const App: React.FC = () => {
                               {new Date(record.updatedAt).toLocaleTimeString()}
                             </p>
                           </button>
-                          <div className="flex flex-col gap-1">
-                            <button
-                              type="button"
-                              onClick={() => handleDownloadSavedCv(record)}
-                              className="flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-2 text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
-                              aria-label={`Download ${record.name} as PDF`}
-                              title="Download PDF"
-                            >
-                              <ArrowDownTrayIcon className="h-4 w-4" aria-hidden="true" />
-                            </button>
+                          <div className="flex flex-col justify-center">
                             <button
                               type="button"
                               onClick={() =>
@@ -755,9 +745,6 @@ export const App: React.FC = () => {
                 >
                   <span>+ Add section</span>
                 </button>
-              </div>
-              <div className="rounded-md bg-slate-100 px-3 py-2 text-xs text-slate-600">
-                Auto-save to this browser is coming soon. For now, download JSON to keep a copy.
               </div>
             </aside>
 

@@ -171,8 +171,7 @@ export const decodeEmbeddedCvPayload = (payload: string): string => {
 
   try {
     const bytes = base64ToUint8(sanitized);
-    const decompressed = ungzip(bytes, { to: 'string' }) as string;
-    return decompressed;
+    return ungzip(bytes, { to: 'string' }) as string;
   } catch {
     return trimmed;
   }
