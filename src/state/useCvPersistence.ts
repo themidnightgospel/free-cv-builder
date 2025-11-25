@@ -6,7 +6,7 @@ import {
   getCvDisplayName,
   type SavedCvRecord,
 } from './cvStorage';
-import { isRecord, stripCvPhoto } from './cvModel';
+import { hasMeaningfulCv, isRecord } from './cvModel';
 import { generateId } from '../utils/uuid';
 
 export const readSavedCvsFromStorage = (): SavedCvRecord[] => {
@@ -96,11 +96,24 @@ export const useCvPersistence = (
     }
     saveTimeoutRef.current = window.setTimeout(() => {
       const records = readSavedCvsFromStorage();
+      if (!hasMeaningfulCv(cv)) {
+        const filtered = records.filter(
+          (record) => record.id !== currentCvId,
+        );
+        if (filtered.length !== records.length) {
+          writeSavedCvsToStorage(filtered);
+          setSavedCvs(filtered);
+        }
+        persistCurrentCvId(currentCvId);
+        setHasUnsavedChanges(false);
+        saveTimeoutRef.current = null;
+        return;
+      }
       const entry: SavedCvRecord = {
         id: currentCvId,
         name: getCvDisplayName(cv),
         updatedAt: Date.now(),
-        cv: stripCvPhoto(cv),
+        cv,
       };
       const existingIndex = records.findIndex(
         (record) => record.id === currentCvId,
@@ -118,7 +131,7 @@ export const useCvPersistence = (
       setSavedCvs(nextRecords);
       setHasUnsavedChanges(false);
       saveTimeoutRef.current = null;
-    }, 2000);
+    }, 1000);
     return () => {
       if (saveTimeoutRef.current) {
         window.clearTimeout(saveTimeoutRef.current);

@@ -457,6 +457,20 @@ export const validatePersonalInfo = (personalInfo: PersonalInfo) => {
   return { isValid: errors.length === 0, errors };
 };
 
+export const hasMeaningfulPersonalInfo = (
+  personalInfo: PersonalInfo,
+): boolean =>
+  hasAnyText(
+    personalInfo.fullName,
+    personalInfo.jobTitle,
+    personalInfo.summary,
+    personalInfo.email,
+    personalInfo.phone,
+    personalInfo.location,
+    personalInfo.website,
+    personalInfo.linkedin,
+  );
+
 export const hasMeaningfulExperience = (
   experience: ExperienceEntry[],
 ): boolean =>
@@ -485,6 +499,24 @@ export const hasMeaningfulVolunteer = (
   volunteer: CvData['volunteer'],
 ): boolean =>
   volunteer.some((v) => (v.organization ?? '').trim() && (v.role ?? '').trim());
+
+export const hasMeaningfulCv = (cv: CvData): boolean =>
+  hasMeaningfulPersonalInfo(cv.personalInfo) ||
+  hasMeaningfulExperience(cv.experience) ||
+  hasMeaningfulEducation(cv.education) ||
+  hasMeaningfulProjects(cv.projects) ||
+  hasMeaningfulAchievements(cv.achievements) ||
+  hasMeaningfulVolunteer(cv.volunteer) ||
+  cv.skills.some((skill) => hasAnyText(skill.name, skill.level ?? '')) ||
+  cv.languages.some((language) =>
+    hasAnyText(language.name, language.level ?? ''),
+  ) ||
+  cv.publications.length > 0 ||
+  cv.talks.length > 0 ||
+  cv.openSource.length > 0 ||
+  cv.customSections.some((section) =>
+    hasAnyText(section.title, section.body),
+  );
 
 export const isCustomSectionId = (
   sectionId: SectionId,

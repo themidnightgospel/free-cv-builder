@@ -37,6 +37,7 @@ import {
   createEmptyExperience,
   createEmptyProject,
   createInitialCv,
+  hasMeaningfulCv,
   hasMeaningfulAchievements,
   hasMeaningfulEducation,
   hasMeaningfulExperience,
@@ -705,6 +706,10 @@ export const App: React.FC = () => {
   );
 
   if (mode === 'landing') {
+    const nonEmptySavedCvs = [...savedCvs].filter((record) =>
+      hasMeaningfulCv(record.cv),
+    );
+
     return (
       <>
         <PdfPayloadPortal payload={printablePayload} />
@@ -742,13 +747,13 @@ export const App: React.FC = () => {
                 className="hidden"
                 onChange={handlePdfUploadChange}
               />
-              {savedCvs.length > 0 && (
+              {nonEmptySavedCvs.length > 0 && (
                 <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 space-y-2">
                   <p className="text-xs font-semibold tracking-wide text-slate-500">
                     Saved CVs on this browser
                   </p>
                   <div className="space-y-2">
-                    {[...savedCvs]
+                    {[...nonEmptySavedCvs]
                       .sort((a, b) => b.updatedAt - a.updatedAt)
                       .map((record) => (
                         <div
