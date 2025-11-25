@@ -22,6 +22,7 @@ import {
   bytesToBinaryString,
   decodeEmbeddedCvPayload,
   extractChunkedPayloadFromText,
+  extractProfileImageFromPdf,
   loadPdfJs,
 } from './pdf/pdfExtraction';
 import { PdfPayloadPortal, PdfPayloadPrintBlock } from './pdf/PdfPayloadEmbed';
@@ -208,16 +209,27 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  const importCvFromJsonText = (jsonText: string, sourceLabel: string) => {
+  const importCvFromJsonText = (
+    jsonText: string,
+    sourceLabel: string,
+    photoDataUrl?: string | null,
+  ) => {
     const parsed = JSON.parse(jsonText);
     const normalized = normalizeCvData(parsed);
     if (!normalized) {
       throw new Error('Invalid CV JSON structure');
     }
+    const nextCv =
+      photoDataUrl && !normalized.personalInfo.photoDataUrl
+        ? {
+            ...normalized,
+            personalInfo: { ...normalized.personalInfo, photoDataUrl },
+          }
+        : normalized;
     const newId = generateId();
     setCurrentCvId(newId);
     persistCurrentCvId(newId);
-    setCv(normalized);
+    setCv(nextCv);
     setMode('editor');
     setActiveSection('personal');
     setActiveWorkspaceView('sections');
@@ -234,13 +246,17 @@ export const App: React.FC = () => {
     try {
       const buffer = await file.arrayBuffer();
       const bytes = new Uint8Array(buffer);
+      const cloneBytes = () => new Uint8Array(bytes);
       const textContentRaw = bytesToBinaryString(bytes);
+      const photoFromPdfPromise = extractProfileImageFromPdf(cloneBytes()).catch(
+        () => null,
+      );
 
       let pdfJsText: string | null = null;
       try {
         const pdfjs = await loadPdfJs();
         const doc = await pdfjs.getDocument({
-          data: bytes,
+          data: cloneBytes(),
         }).promise;
         let extractedText = '';
         for (let pageIndex = 1; pageIndex <= doc.numPages; pageIndex += 1) {
@@ -391,7 +407,7 @@ export const App: React.FC = () => {
               try {
                 const pdfjs = await loadPdfJs();
                 const doc = await pdfjs.getDocument({
-                  data: bytes,
+                  data: cloneBytes(),
                 }).promise;
                 let extractedText = '';
                 for (let pageIndex = 1; pageIndex <= doc.numPages; pageIndex += 1) {
@@ -418,7 +434,8 @@ export const App: React.FC = () => {
         return;
       }
 
-      importCvFromJsonText(jsonText, 'PDF file');
+      const photoDataUrl = await photoFromPdfPromise;
+      importCvFromJsonText(jsonText, 'PDF file', photoDataUrl || undefined);
     } catch (error) {
       console.error(error);
       setImportError(

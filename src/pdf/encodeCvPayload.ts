@@ -43,7 +43,6 @@ const compactPersonalInfo = (
   pushStringIfPresent(result, 'location', info.location);
   pushStringIfPresent(result, 'website', info.website);
   pushStringIfPresent(result, 'linkedin', info.linkedin);
-  pushStringIfPresent(result, 'photoDataUrl', info.photoDataUrl ?? undefined);
   return result as Partial<PersonalInfo> &
     Pick<PersonalInfo, 'fullName' | 'email'>;
 };

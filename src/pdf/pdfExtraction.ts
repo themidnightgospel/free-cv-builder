@@ -174,3 +174,209 @@ export const decodeEmbeddedCvPayload = (payload: string): string => {
     return trimmed;
   }
 };
+
+const convertImageToDataUrl = (image: any, pdfjs: any): string | null => {
+  if (!image) return null;
+
+  const renderDrawable = (drawable: CanvasImageSource) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    const width = (drawable as any).width ?? 0;
+    const height = (drawable as any).height ?? 0;
+    if (!width || !height) return null;
+    canvas.width = width;
+    canvas.height = height;
+    ctx.drawImage(drawable, 0, 0);
+    return canvas.toDataURL('image/png');
+  };
+
+  if (image instanceof ImageData) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    canvas.width = image.width;
+    canvas.height = image.height;
+    ctx.putImageData(image, 0, 0);
+    return canvas.toDataURL('image/png');
+  }
+
+  const bitmapImage =
+    typeof ImageBitmap !== 'undefined' && image instanceof ImageBitmap
+      ? image
+      : typeof ImageBitmap !== 'undefined' && image?.bitmap instanceof ImageBitmap
+        ? image.bitmap
+        : null;
+  if (bitmapImage) {
+    const dataUrl = renderDrawable(bitmapImage);
+    if (dataUrl) return dataUrl;
+  }
+
+  if (
+    typeof HTMLImageElement !== 'undefined' &&
+    image instanceof HTMLImageElement
+  ) {
+    const dataUrl = renderDrawable(image);
+    if (dataUrl) return dataUrl;
+  }
+
+  const width = image.width ?? image.w;
+  const height = image.height ?? image.h;
+  const rawData = image.data ?? image?.bitmap?.data;
+  if (!width || !height || !rawData) return null;
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  canvas.width = width;
+  canvas.height = height;
+
+  const imageKind = pdfjs?.ImageKind ?? {};
+  const kind = image.kind;
+  let imageData: ImageData | null = null;
+
+  if (
+    (imageKind.RGBA_32 && kind === imageKind.RGBA_32) ||
+    rawData.length === width * height * 4
+  ) {
+    imageData = new ImageData(new Uint8ClampedArray(rawData), width, height);
+  } else if (
+    (imageKind.RGB_24 && kind === imageKind.RGB_24) ||
+    rawData.length === width * height * 3
+  ) {
+    const rgba = new Uint8ClampedArray(width * height * 4);
+    for (let src = 0, dest = 0; src < rawData.length; src += 3, dest += 4) {
+      rgba[dest] = rawData[src];
+      rgba[dest + 1] = rawData[src + 1];
+      rgba[dest + 2] = rawData[src + 2];
+      rgba[dest + 3] = 255;
+    }
+    imageData = new ImageData(rgba, width, height);
+  }
+
+  if (!imageData) return null;
+  ctx.putImageData(imageData, 0, 0);
+  return canvas.toDataURL('image/png');
+};
+
+export const extractProfileImageFromPdf = async (
+  bytes: Uint8Array,
+): Promise<string | null> => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const pdfjs = await loadPdfJs();
+    const doc = await pdfjs.getDocument({ data: bytes }).promise;
+    if (!doc.numPages) return null;
+    const page = await doc.getPage(1);
+    const operatorList = await page.getOperatorList();
+    const ops = pdfjs.OPS;
+    if (!ops) return null;
+    const inlineImages: any[] = [];
+    const xObjectNames = new Set<string>();
+
+    operatorList.fnArray.forEach((fn: number, index: number) => {
+      const args = operatorList.argsArray[index];
+      if (!args) return;
+      if (
+        fn === ops.paintInlineImageXObject ||
+        fn === ops.paintInlineImageXObjectRepeat
+      ) {
+        inlineImages.push(args[0]);
+      }
+      if (
+        fn === ops.paintImageXObject ||
+        fn === ops.paintImageXObjectRepeat
+      ) {
+        const name = args[0];
+        if (typeof name === 'string') {
+          xObjectNames.add(name);
+        }
+      }
+    });
+
+    type Candidate = {
+      dataUrl: string;
+      width: number;
+      height: number;
+      source: 'inline' | 'xobject';
+    };
+    const candidates: Candidate[] = [];
+
+    const pushCandidate = (image: any, source: Candidate['source']) => {
+      if (!image) return;
+      const width =
+        image.width ??
+        image.w ??
+        image?.bitmap?.width ??
+        (typeof ImageBitmap !== 'undefined' && image instanceof ImageBitmap
+          ? image.width
+          : null);
+      const height =
+        image.height ??
+        image.h ??
+        image?.bitmap?.height ??
+        (typeof ImageBitmap !== 'undefined' && image instanceof ImageBitmap
+          ? image.height
+          : null);
+      if (!width || !height) return;
+      const dataUrl = convertImageToDataUrl(image, pdfjs);
+      if (!dataUrl) return;
+      candidates.push({ dataUrl, width, height, source });
+    };
+
+    for (const image of inlineImages) {
+      pushCandidate(image, 'inline');
+    }
+
+    if (xObjectNames.size > 0) {
+      await Promise.all(
+        [...xObjectNames].map(
+          (name) =>
+            new Promise<void>((resolve) => {
+              let settled = false;
+              const maybeImage = page.objs.get(name, () => {
+                if (!settled) {
+                  settled = true;
+                  resolve();
+                }
+              });
+              if (maybeImage && !settled) {
+                settled = true;
+                resolve();
+              }
+            }),
+        ),
+      );
+
+      for (const name of xObjectNames) {
+        const image = page.objs.get(name);
+        pushCandidate(image, 'xobject');
+      }
+    }
+
+    if (!candidates.length) return null;
+
+    const scoreCandidate = (candidate: Candidate): number => {
+      const area = candidate.width * candidate.height;
+      const aspect =
+        candidate.width >= candidate.height
+          ? candidate.width / candidate.height
+          : candidate.height / candidate.width;
+      const aspectPenalty = 1 + Math.abs(aspect - 1);
+      return area / aspectPenalty;
+    };
+
+    let best = candidates[0];
+    for (let i = 1; i < candidates.length; i += 1) {
+      const current = candidates[i];
+      if (scoreCandidate(current) > scoreCandidate(best)) {
+        best = current;
+      }
+    }
+
+    return best.dataUrl;
+  } catch (error) {
+    console.error('Failed to extract profile image from PDF', error);
+    return null;
+  }
+};

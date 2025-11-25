@@ -6,7 +6,7 @@ import {
   getCvDisplayName,
   type SavedCvRecord,
 } from './cvStorage';
-import { isRecord } from './cvModel';
+import { isRecord, stripCvPhoto } from './cvModel';
 import { generateId } from '../utils/uuid';
 
 export const readSavedCvsFromStorage = (): SavedCvRecord[] => {
@@ -100,7 +100,7 @@ export const useCvPersistence = (
         id: currentCvId,
         name: getCvDisplayName(cv),
         updatedAt: Date.now(),
-        cv,
+        cv: stripCvPhoto(cv),
       };
       const existingIndex = records.findIndex(
         (record) => record.id === currentCvId,
