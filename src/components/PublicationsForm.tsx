@@ -2,6 +2,7 @@ import React from 'react';
 import type { PublicationEntry } from '../types';
 import { getMonthInputValue } from '../utils/dateFields';
 import { useConfirmDialog } from './ConfirmDialogProvider';
+import { generateId } from '../utils/uuid';
 
 export interface PublicationsFormProps {
   entries: PublicationEntry[];
@@ -42,7 +43,7 @@ export const PublicationsForm: React.FC<PublicationsFormProps> = ({
   };
 
   const addEntry = () => {
-    const id = crypto.randomUUID();
+    const id = generateId();
     onChange([
       ...entries,
       {

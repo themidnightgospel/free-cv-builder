@@ -14,6 +14,7 @@ import type {
   TalkEntry,
   VolunteerExperienceEntry,
 } from '../types';
+import { generateId } from '../utils/uuid';
 
 export const createEmptyPersonalInfo = (): PersonalInfo => ({
   fullName: '',
@@ -28,7 +29,7 @@ export const createEmptyPersonalInfo = (): PersonalInfo => ({
 });
 
 export const createEmptyExperience = (): ExperienceEntry => ({
-  id: crypto.randomUUID(),
+  id: generateId(),
   jobTitle: '',
   company: '',
   location: '',
@@ -39,7 +40,7 @@ export const createEmptyExperience = (): ExperienceEntry => ({
 });
 
 export const createEmptyEducation = (): EducationEntry => ({
-  id: crypto.randomUUID(),
+  id: generateId(),
   degree: '',
   institution: '',
   location: '',
@@ -50,7 +51,7 @@ export const createEmptyEducation = (): EducationEntry => ({
 });
 
 export const createEmptyProject = (): ProjectEntry => ({
-  id: crypto.randomUUID(),
+  id: generateId(),
   name: '',
   role: '',
   techStack: '',
@@ -60,7 +61,7 @@ export const createEmptyProject = (): ProjectEntry => ({
 });
 
 export const createEmptyAchievement = (): AchievementEntry => ({
-  id: crypto.randomUUID(),
+  id: generateId(),
   name: '',
   organization: '',
   date: '',
@@ -116,9 +117,7 @@ export const normalizeString = (value: unknown): string =>
   typeof value === 'string' ? value.trim() : '';
 
 export const ensureId = (value: unknown): string =>
-  typeof value === 'string' && value.trim().length > 0
-    ? value
-    : crypto.randomUUID();
+  typeof value === 'string' && value.trim().length > 0 ? value : generateId();
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;

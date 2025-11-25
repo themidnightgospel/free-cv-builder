@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Language, LanguageLevel } from '../types';
+import { generateId } from '../utils/uuid';
 
 export interface LanguagesFormProps {
   languages: Language[];
@@ -24,7 +25,7 @@ export const LanguagesForm: React.FC<LanguagesFormProps> = ({
   const handleAdd = () => {
     if (!name.trim()) return;
     const language: Language = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       name: name.trim(),
       level,
     };
@@ -111,4 +112,3 @@ export const LanguagesForm: React.FC<LanguagesFormProps> = ({
     </div>
   );
 };
-

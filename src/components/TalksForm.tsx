@@ -2,6 +2,7 @@ import React from 'react';
 import type { TalkEntry } from '../types';
 import { getMonthInputValue } from '../utils/dateFields';
 import { useConfirmDialog } from './ConfirmDialogProvider';
+import { generateId } from '../utils/uuid';
 
 export interface TalksFormProps {
   entries: TalkEntry[];
@@ -39,7 +40,7 @@ export const TalksForm: React.FC<TalksFormProps> = ({ entries, onChange }) => {
   };
 
   const addEntry = () => {
-    const id = crypto.randomUUID();
+    const id = generateId();
     onChange([
       ...entries,
       {

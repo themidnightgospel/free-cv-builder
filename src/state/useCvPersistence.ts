@@ -7,6 +7,7 @@ import {
   type SavedCvRecord,
 } from './cvStorage';
 import { isRecord } from './cvModel';
+import { generateId } from '../utils/uuid';
 
 export const readSavedCvsFromStorage = (): SavedCvRecord[] => {
   if (typeof window === 'undefined') return [];
@@ -68,9 +69,7 @@ export const useCvPersistence = (
   cv: CvData,
   mode: 'landing' | 'editor',
 ): UseCvPersistenceResult => {
-  const [currentCvId, setCurrentCvId] = useState<string>(() =>
-    crypto.randomUUID(),
-  );
+  const [currentCvId, setCurrentCvId] = useState<string>(() => generateId());
   const [savedCvs, setSavedCvs] = useState<SavedCvRecord[]>([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const saveTimeoutRef = useRef<number | null>(null);

@@ -2,6 +2,7 @@ import React from 'react';
 import type { VolunteerExperienceEntry } from '../types';
 import { getMonthInputValue } from '../utils/dateFields';
 import { useConfirmDialog } from './ConfirmDialogProvider';
+import { generateId } from '../utils/uuid';
 
 export interface VolunteerFormProps {
   entries: VolunteerExperienceEntry[];
@@ -45,7 +46,7 @@ export const VolunteerForm: React.FC<VolunteerFormProps> = ({
   };
 
   const addEntry = () => {
-    const id = crypto.randomUUID();
+    const id = generateId();
     onChange([
       ...entries,
       {

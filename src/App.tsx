@@ -55,6 +55,7 @@ import {
 } from './state/useCvPersistence';
 import { usePdfExport } from './pdf/usePdfExport';
 import { createSampleCv } from './state/sampleCv';
+import { generateId } from './utils/uuid';
 
 declare global {
   interface Window {
@@ -170,7 +171,7 @@ export const App: React.FC = () => {
   };
   useEffect(() => {
     window.fillForm = () => {
-      const newId = crypto.randomUUID();
+      const newId = generateId();
       setCurrentCvId(newId);
       persistCurrentCvId(newId);
       setMode('editor');
@@ -213,7 +214,7 @@ export const App: React.FC = () => {
     if (!normalized) {
       throw new Error('Invalid CV JSON structure');
     }
-    const newId = crypto.randomUUID();
+    const newId = generateId();
     setCurrentCvId(newId);
     persistCurrentCvId(newId);
     setCv(normalized);
@@ -475,7 +476,7 @@ export const App: React.FC = () => {
   }, [cv]);
 
   const handleCreateNew = () => {
-    const newId = crypto.randomUUID();
+    const newId = generateId();
     setCurrentCvId(newId);
     persistCurrentCvId(newId);
     setCv(createInitialCv());
@@ -514,7 +515,7 @@ export const App: React.FC = () => {
       return next;
     });
     if (currentCvId === id) {
-      const newId = crypto.randomUUID();
+      const newId = generateId();
       setCurrentCvId(newId);
       persistCurrentCvId(newId);
     }

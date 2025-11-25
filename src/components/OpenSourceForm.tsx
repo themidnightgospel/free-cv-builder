@@ -1,6 +1,7 @@
 import React from 'react';
 import type { ProjectEntry } from '../types';
 import { useConfirmDialog } from './ConfirmDialogProvider';
+import { generateId } from '../utils/uuid';
 
 export interface OpenSourceFormProps {
   entries: ProjectEntry[];
@@ -41,7 +42,7 @@ export const OpenSourceForm: React.FC<OpenSourceFormProps> = ({
   };
 
   const addEntry = () => {
-    const id = crypto.randomUUID();
+    const id = generateId();
     onChange([
       ...entries,
       {

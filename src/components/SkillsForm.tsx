@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Skill, SkillLevel } from '../types';
+import { generateId } from '../utils/uuid';
 
 export interface SkillsFormProps {
   skills: Skill[];
@@ -15,7 +16,7 @@ export const SkillsForm: React.FC<SkillsFormProps> = ({ skills, onChange }) => {
   const handleAdd = () => {
     if (!name.trim()) return;
     const newSkill: Skill = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       name: name.trim(),
       level: level || undefined,
     };

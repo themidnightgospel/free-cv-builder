@@ -1,7 +1,8 @@
 import type { CvData, SectionId } from '../types';
+import { generateId } from '../utils/uuid';
 
 export const createSampleCv = (): CvData => {
-  const makeId = () => crypto.randomUUID();
+  const makeId = () => generateId();
   const customSections = [
     {
       id: makeId(),
@@ -232,4 +233,3 @@ export const createSampleCv = (): CvData => {
     ],
   };
 };
-
