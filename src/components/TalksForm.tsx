@@ -3,6 +3,15 @@ import type { TalkEntry } from '../types';
 import { getMonthInputValue } from '../utils/dateFields';
 import { useConfirmDialog } from './ConfirmDialogProvider';
 import { generateId } from '../utils/uuid';
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  TrashIcon,
+} from '@heroicons/react/24/outline';
+import {
+  sectionEntryIconButtonDanger,
+  sectionEntryIconButtonNeutral,
+} from './iconButtonStyles';
 
 export interface TalksFormProps {
   entries: TalkEntry[];
@@ -84,26 +93,32 @@ export const TalksForm: React.FC<TalksFormProps> = ({ entries, onChange }) => {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="text-[11px] text-slate-500 hover:text-slate-700 disabled:text-slate-300"
+                  className={sectionEntryIconButtonNeutral}
                   disabled={index === 0}
                   onClick={() => moveEntry(index, -1)}
+                  aria-label="Move entry up"
+                  title="Move up"
                 >
-                  Move up
+                  <ChevronUpIcon className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
-                  className="text-[11px] text-slate-500 hover:text-slate-700 disabled:text-slate-300"
+                  className={sectionEntryIconButtonNeutral}
                   disabled={index === entries.length - 1}
                   onClick={() => moveEntry(index, 1)}
+                  aria-label="Move entry down"
+                  title="Move down"
                 >
-                  Move down
+                  <ChevronDownIcon className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
-                  className="text-[11px] text-red-500 hover:text-red-600"
+                  className={sectionEntryIconButtonDanger}
                   onClick={() => deleteEntry(index)}
+                  aria-label="Delete entry"
+                  title="Delete"
                 >
-                  Delete
+                  <TrashIcon className="h-4 w-4" />
                 </button>
               </div>
             </div>

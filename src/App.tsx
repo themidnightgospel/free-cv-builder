@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { TrashIcon } from '@heroicons/react/24/outline';
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  TrashIcon,
+} from '@heroicons/react/24/outline';
 import type { CvData, CvSectionKey, FontSettings, SectionId } from './types';
 import { PersonalInfoForm } from './components/PersonalInfoForm';
 import { ExperienceForm } from './components/ExperienceForm';
@@ -53,6 +57,7 @@ import {
 import { usePdfExport } from './pdf/usePdfExport';
 import { createSampleCv } from './state/sampleCv';
 import { generateId } from './utils/uuid';
+import { sectionsSidebarArrowButton } from './components/iconButtonStyles';
 
 declare global {
   interface Window {
@@ -375,6 +380,7 @@ export const App: React.FC = () => {
 
   const reorderSections = (sourceId: SectionId, targetId: SectionId) => {
     if (sourceId === targetId) return;
+    if (sourceId === 'personal' || targetId === 'personal') return;
     setCv((prev) => {
       const order = [...prev.sectionsOrder];
       const fromIndex = order.indexOf(sourceId);
@@ -382,6 +388,11 @@ export const App: React.FC = () => {
       if (fromIndex === -1 || toIndex === -1) return prev;
       order.splice(fromIndex, 1);
       order.splice(toIndex, 0, sourceId);
+      const personalIndex = order.indexOf('personal');
+      if (personalIndex > 0) {
+        order.splice(personalIndex, 1);
+        order.unshift('personal');
+      }
       return { ...prev, sectionsOrder: order };
     });
   };
@@ -674,12 +685,14 @@ export const App: React.FC = () => {
                   Sections
                 </h2>
                 <nav className="space-y-1">
-                  {cv.sectionsOrder.map((id) => {
-                    const label = isCustomSectionId(id)
+                  {cv.sectionsOrder.map((id, index) => {
+                    const rawLabel = isCustomSectionId(id)
                       ? cv.customSections.find(
                           (section) => `custom:${section.id}` === id,
                         )?.title || 'Custom section'
                       : sectionLabel[id as CvSectionKey];
+                    const label =
+                      rawLabel.length > 16 ? rawLabel.slice(0, 16) : rawLabel;
 
                     let status: 'valid' | 'incomplete' | 'empty' = 'empty';
                     if (isCustomSectionId(id)) {
@@ -697,28 +710,52 @@ export const App: React.FC = () => {
                         : status === 'incomplete'
                         ? 'bg-amber-400'
                         : 'bg-slate-300';
+                    const isPersonal = id === 'personal';
+                    const isFirst = index === 0;
+                    const isLast = index === cv.sectionsOrder.length - 1;
+                    const previousId =
+                      index > 0 ? (cv.sectionsOrder[index - 1] as SectionId) : null;
+                    const isImmediatelyAfterPersonal = previousId === 'personal';
+                    const canMoveUp =
+                      !isPersonal && !isFirst && !isImmediatelyAfterPersonal;
+                    const canMoveDown = !isPersonal && !isLast;
+                    const moveUpTargetId = canMoveUp ? previousId : null;
+                    const moveDownTargetId = canMoveDown
+                      ? (cv.sectionsOrder[index + 1] as SectionId)
+                      : null;
 
                     return (
                       <div
                         key={id}
-                        className={`flex items-center gap-1 rounded-md ${
+                        className={`flex w-full items-center gap-1.5 rounded-md ${
                           draggingSectionId === id ? 'opacity-60' : ''
                         }`}
-                        draggable
+                        draggable={!isPersonal}
                         onDragStart={(event) => {
+                          if (isPersonal) return;
                           event.dataTransfer.effectAllowed = 'move';
                           setDraggingSectionId(id);
                         }}
                         onDragEnd={() => setDraggingSectionId(null)}
                         onDragOver={(event) => {
-                          if (!draggingSectionId || draggingSectionId === id)
+                          if (
+                            !draggingSectionId ||
+                            draggingSectionId === id ||
+                            id === 'personal' ||
+                            draggingSectionId === 'personal'
+                          )
                             return;
                           event.preventDefault();
                           event.dataTransfer.dropEffect = 'move';
                         }}
                         onDrop={(event) => {
                           event.preventDefault();
-                          if (!draggingSectionId || draggingSectionId === id)
+                          if (
+                            !draggingSectionId ||
+                            draggingSectionId === id ||
+                            id === 'personal' ||
+                            draggingSectionId === 'personal'
+                          )
                             return;
                           reorderSections(draggingSectionId, id);
                           setDraggingSectionId(null);
@@ -741,6 +778,38 @@ export const App: React.FC = () => {
                             />
                           </span>
                         </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            className={sectionsSidebarArrowButton}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              if (!moveUpTargetId) return;
+                              reorderSections(id, moveUpTargetId);
+                            }}
+                            disabled={isFirst || isPersonal}
+                            aria-label="Move section up"
+                            title="Move section up"
+                          >
+                            <ChevronUpIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            className={sectionsSidebarArrowButton}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              if (!moveDownTargetId) return;
+                              reorderSections(id, moveDownTargetId);
+                            }}
+                            disabled={isLast || isPersonal}
+                            aria-label="Move section down"
+                            title="Move section down"
+                          >
+                            <ChevronDownIcon className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
