@@ -102,6 +102,7 @@ export const App: React.FC = () => {
   const [fontSettings, setFontSettings] = useState<FontSettings>({
     ...defaultFontSettings,
   });
+  const [isAdvancedOptionsOpen, setIsAdvancedOptionsOpen] = useState(false);
   const addSectionMenuRef = useRef<HTMLDivElement | null>(null);
   const cvUploadInputRef = useRef<HTMLInputElement>(null);
   const activeCvEmbeddedPayload = useMemo(() => {
@@ -1080,14 +1081,29 @@ export const App: React.FC = () => {
           <div className="mt-4 mx-auto max-w-4xl print:hidden">
             <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Advanced options
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    Fine-tune typography for the exported PDF.
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  className="flex items-start gap-2 text-left"
+                  aria-expanded={isAdvancedOptionsOpen}
+                  aria-controls="advanced-options-panel"
+                  onClick={() =>
+                    setIsAdvancedOptionsOpen((prevIsOpen) => !prevIsOpen)
+                  }
+                >
+                  {isAdvancedOptionsOpen ? (
+                    <ChevronUpIcon className="h-4 w-4 text-slate-500" />
+                  ) : (
+                    <ChevronDownIcon className="h-4 w-4 text-slate-500" />
+                  )}
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Advanced options
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Fine-tune typography for the exported PDF.
+                    </p>
+                  </div>
+                </button>
                 <button
                   type="button"
                   className="text-[11px] font-medium text-blue-600 hover:text-blue-700"
@@ -1096,52 +1112,57 @@ export const App: React.FC = () => {
                   Reset defaults
                 </button>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {fontControls.map((control) => (
-                  <div key={control.key}>
-                    <label className="block text-[11px] font-semibold text-slate-700">
-                      {control.label}
-                    </label>
-                    <p className="text-[10px] text-slate-500">
-                      {control.helper}
-                    </p>
-                    <div className="mt-1 flex items-center gap-2">
-                      <button
-                        type="button"
-                        className="rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                        onClick={() =>
-                          adjustFontSetting(control.key, -(control.step ?? 1))
-                        }
-                      >
-                        -
-                      </button>
-                      <input
-                        type="number"
-                        min={0}
-                        step={control.step ?? 1}
-                        className="w-full rounded-md border border-slate-300 px-2 py-1 text-[11px] text-slate-700"
-                        value={fontSettings[control.key]}
-                        onChange={(event) =>
-                          handleFontSettingChange(
-                            control.key,
-                            Number(event.target.value),
-                          )
-                        }
-                      />
-                      <span className="text-[10px] text-slate-500">px</span>
-                      <button
-                        type="button"
-                        className="rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                        onClick={() =>
-                          adjustFontSetting(control.key, control.step ?? 1)
-                        }
-                      >
-                        +
-                      </button>
+              {isAdvancedOptionsOpen && (
+                <div
+                  className="grid gap-4 sm:grid-cols-2"
+                  id="advanced-options-panel"
+                >
+                  {fontControls.map((control) => (
+                    <div key={control.key}>
+                      <label className="block text-[11px] font-semibold text-slate-700">
+                        {control.label}
+                      </label>
+                      <p className="text-[10px] text-slate-500">
+                        {control.helper}
+                      </p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          onClick={() =>
+                            adjustFontSetting(control.key, -(control.step ?? 1))
+                          }
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min={0}
+                          step={control.step ?? 1}
+                          className="w-full rounded-md border border-slate-300 px-2 py-1 text-[11px] text-slate-700"
+                          value={fontSettings[control.key]}
+                          onChange={(event) =>
+                            handleFontSettingChange(
+                              control.key,
+                              Number(event.target.value),
+                            )
+                          }
+                        />
+                        <span className="text-[10px] text-slate-500">px</span>
+                        <button
+                          type="button"
+                          className="rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          onClick={() =>
+                            adjustFontSetting(control.key, control.step ?? 1)
+                          }
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
