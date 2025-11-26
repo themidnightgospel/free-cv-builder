@@ -43,6 +43,8 @@
 
 .cv-preview-content {
   --font-full-name: 1.75rem;
+  --font-job-title: 0.75rem;
+  --font-contact-detail: 0.75rem;
   --font-section-title: 0.75rem;
   --font-section-item-title: 0.875rem;
   --font-section-detail: 0.75rem;
@@ -52,8 +54,16 @@
   font-size: var(--font-full-name) !important;
 }
 
+.cv-preview-content .font-job-title {
+  font-size: var(--font-job-title) !important;
+}
+
 .cv-preview-content .font-section-title {
   font-size: var(--font-section-title) !important;
+}
+
+.cv-preview-content .font-contact-detail {
+  font-size: var(--font-contact-detail);
 }
 
 .cv-preview-content .text-\[12px\] {

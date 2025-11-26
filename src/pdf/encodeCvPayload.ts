@@ -193,6 +193,7 @@ const buildCompactCvPayload = (cv: CvData) => ({
   languages: compactArray(cv.languages, compactLanguage),
   customSections: compactArray(cv.customSections, compactCustomSection),
   sectionsOrder: cv.sectionsOrder ?? [],
+  fontSettings: cv.fontSettings,
 });
 
 export const encodeCvPayloadForText = (data: CvData): string => {

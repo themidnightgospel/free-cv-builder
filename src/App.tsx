@@ -29,6 +29,7 @@ import { PdfPayloadPortal, PdfPayloadPrintBlock } from './pdf/PdfPayloadEmbed';
 import {
   CURRENT_CV_ID_STORAGE_KEY,
   getCvDisplayName,
+  type SavedCvRecord,
 } from './state/cvStorage';
 import {
   createEmptyAchievement,
@@ -44,6 +45,7 @@ import {
   hasMeaningfulVolunteer,
   isCustomSectionId,
   normalizeCvData,
+  DEFAULT_FONT_SETTINGS,
   sectionLabel,
   validatePersonalInfo,
 } from './state/cvModel';
@@ -93,15 +95,7 @@ export const App: React.FC = () => {
     setSavedCvs,
   } = useCvPersistence(cv, mode);
   const { isPreparingPdf, pendingPrintJob, downloadCvPdf } = usePdfExport(addToast);
-  const defaultFontSettings: FontSettings = {
-    fullName: 28,
-    sectionTitle: 12,
-    sectionItemTitle: 14,
-    sectionDetail: 12,
-  };
-  const [fontSettings, setFontSettings] = useState<FontSettings>({
-    ...defaultFontSettings,
-  });
+  const fontSettings = cv.fontSettings;
   const [isAdvancedOptionsOpen, setIsAdvancedOptionsOpen] = useState(false);
   const addSectionMenuRef = useRef<HTMLDivElement | null>(null);
   const cvUploadInputRef = useRef<HTMLInputElement>(null);
@@ -142,35 +136,63 @@ export const App: React.FC = () => {
       ],
       [],
     );
-  const fontControls: {
-    key: keyof FontSettings;
-    label: string;
-    helper: string;
-    step?: number;
+  const fontControlSections: {
+    id: string;
+    title: string;
+    controls: {
+      key: keyof FontSettings;
+      label: string;
+      helper: string;
+      step?: number;
+    }[];
   }[] = [
     {
-      key: 'fullName',
-      label: 'Full name font size',
-      helper: 'Controls the hero name in the header.',
-      step: 2,
+      id: 'personal-info',
+      title: 'Personal Info Options',
+      controls: [
+        {
+          key: 'fullName',
+          label: 'Full name font size',
+          helper: 'Controls the hero name in the header.',
+          step: 2,
+        },
+        {
+          key: 'jobTitle',
+          label: 'Job title font size',
+          helper: 'Applies to the role beneath your name.',
+          step: 1,
+        },
+        {
+          key: 'contactDetail',
+          label: 'Contact details font size',
+          helper: 'Email, phone, links in header column 3.',
+          step: 1,
+        },
+      ],
     },
     {
-      key: 'sectionTitle',
-      label: 'Section title font size',
-      helper: 'Applies to headings like Experience or Skills.',
-      step: 1,
-    },
-    {
-      key: 'sectionItemTitle',
-      label: 'Section item title font size',
-      helper: 'Used for job titles, project names, etc.',
-      step: 1,
-    },
-    {
-      key: 'sectionDetail',
-      label: 'Section details font size',
-      helper: 'Controls the body text under each entry.',
-      step: 1,
+      id: 'sections',
+      title: 'Section Typography',
+      controls: [
+        {
+          key: 'sectionTitle',
+          label: 'Section title font size',
+          helper: 'Applies to headings like Experience or Skills.',
+          step: 1,
+        },
+        {
+          key: 'sectionItemTitle',
+          label: 'Section item title font size',
+          helper: 'Used for job titles, project names, etc.',
+          step: 1,
+        },
+        {
+          key: 'sectionDetail',
+          label: 'Section details font size',
+          helper: 'Controls the body text under each entry.',
+          step: 1,
+        },
+      ],
     },
   ];
 
@@ -179,16 +201,25 @@ export const App: React.FC = () => {
     value: number,
   ) => {
     const nextValue = Number.isFinite(value) ? Math.max(0, value) : 0;
-    setFontSettings((prev) => ({ ...prev, [key]: nextValue }));
+    setCv((prev) => ({
+      ...prev,
+      fontSettings: { ...prev.fontSettings, [key]: nextValue },
+    }));
   };
   const adjustFontSetting = (
     key: keyof FontSettings,
     delta: number,
   ) => {
-    setFontSettings((prev) => {
-      const current = prev[key];
-      const nextValue = Math.max(0, Math.round((current + delta) * 10) / 10);
-      return { ...prev, [key]: nextValue };
+    setCv((prev) => {
+      const current = prev.fontSettings[key];
+      const nextValue = Math.max(
+        0,
+        Math.round((current + delta) * 10) / 10,
+      );
+      return {
+        ...prev,
+        fontSettings: { ...prev.fontSettings, [key]: nextValue },
+      };
     });
   };
   useEffect(() => {
@@ -222,14 +253,21 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const storedRecords = readSavedCvsFromStorage();
-    setSavedCvs(storedRecords);
+    const normalizedRecords = storedRecords
+      .map((record) => {
+        const normalizedCv = normalizeCvData(record.cv);
+        if (!normalizedCv) return null;
+        return { ...record, cv: normalizedCv };
+      })
+      .filter((record): record is SavedCvRecord => Boolean(record));
+    setSavedCvs(normalizedRecords);
     const fallbackId =
-      [...storedRecords].sort((a, b) => b.updatedAt - a.updatedAt)[0]?.id ||
+      [...normalizedRecords].sort((a, b) => b.updatedAt - a.updatedAt)[0]?.id ||
       null;
     const preferredId =
       window.localStorage.getItem(CURRENT_CV_ID_STORAGE_KEY) || fallbackId;
     if (preferredId) {
-      const match = storedRecords.find((entry) => entry.id === preferredId);
+      const match = normalizedRecords.find((entry) => entry.id === preferredId);
       if (match) {
         setCv(match.cv);
         setCurrentCvId(match.id);
@@ -366,7 +404,8 @@ export const App: React.FC = () => {
   const handleSelectSavedCv = (id: string) => {
     const record = savedCvs.find((entry) => entry.id === id);
     if (!record) return;
-    setCv(record.cv);
+    const normalizedCv = normalizeCvData(record.cv) ?? createInitialCv();
+    setCv(normalizedCv);
     setMode('editor');
     setActiveSection('personal');
     setActiveWorkspaceView('sections');
@@ -1107,57 +1146,76 @@ export const App: React.FC = () => {
                 <button
                   type="button"
                   className="text-[11px] font-medium text-blue-600 hover:text-blue-700"
-                  onClick={() => setFontSettings({ ...defaultFontSettings })}
+                  onClick={() =>
+                    setCv((prev) => ({
+                      ...prev,
+                      fontSettings: { ...DEFAULT_FONT_SETTINGS },
+                    }))
+                  }
                 >
                   Reset defaults
                 </button>
               </div>
               {isAdvancedOptionsOpen && (
-                <div
-                  className="grid gap-4 sm:grid-cols-2"
-                  id="advanced-options-panel"
-                >
-                  {fontControls.map((control) => (
-                    <div key={control.key}>
-                      <label className="block text-[11px] font-semibold text-slate-700">
-                        {control.label}
-                      </label>
-                      <p className="text-[10px] text-slate-500">
-                        {control.helper}
+                <div className="space-y-4" id="advanced-options-panel">
+                  {fontControlSections.map((group) => (
+                    <div key={group.id} className="space-y-2">
+                      <p className="text-[11px] font-semibold text-slate-700">
+                        {group.title}
                       </p>
-                      <div className="mt-1 flex items-center gap-2">
-                        <button
-                          type="button"
-                          className="rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                          onClick={() =>
-                            adjustFontSetting(control.key, -(control.step ?? 1))
-                          }
-                        >
-                          -
-                        </button>
-                        <input
-                          type="number"
-                          min={0}
-                          step={control.step ?? 1}
-                          className="w-full rounded-md border border-slate-300 px-2 py-1 text-[11px] text-slate-700"
-                          value={fontSettings[control.key]}
-                          onChange={(event) =>
-                            handleFontSettingChange(
-                              control.key,
-                              Number(event.target.value),
-                            )
-                          }
-                        />
-                        <span className="text-[10px] text-slate-500">px</span>
-                        <button
-                          type="button"
-                          className="rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                          onClick={() =>
-                            adjustFontSetting(control.key, control.step ?? 1)
-                          }
-                        >
-                          +
-                        </button>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        {group.controls.map((control) => (
+                          <div key={control.key}>
+                            <label className="block text-[11px] font-semibold text-slate-700">
+                              {control.label}
+                            </label>
+                            <p className="text-[10px] text-slate-500">
+                              {control.helper}
+                            </p>
+                            <div className="mt-1 flex items-center gap-2">
+                              <button
+                                type="button"
+                                className="rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                onClick={() =>
+                                  adjustFontSetting(
+                                    control.key,
+                                    -(control.step ?? 1),
+                                  )
+                                }
+                              >
+                                -
+                              </button>
+                              <input
+                                type="number"
+                                min={0}
+                                step={control.step ?? 1}
+                                className="w-full rounded-md border border-slate-300 px-2 py-1 text-[11px] text-slate-700"
+                                value={fontSettings[control.key]}
+                                onChange={(event) =>
+                                  handleFontSettingChange(
+                                    control.key,
+                                    Number(event.target.value),
+                                  )
+                                }
+                              />
+                              <span className="text-[10px] text-slate-500">
+                                px
+                              </span>
+                              <button
+                                type="button"
+                                className="rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                onClick={() =>
+                                  adjustFontSetting(
+                                    control.key,
+                                    control.step ?? 1,
+                                  )
+                                }
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   ))}
@@ -1199,7 +1257,7 @@ export const App: React.FC = () => {
                 <div className={PREVIEW_SURFACE_CLASSNAMES}>
                   <CvPreview
                     cv={pendingPrintJob.cv}
-                    fontSettings={fontSettings}
+                    fontSettings={pendingPrintJob.cv.fontSettings}
                     forcePrintLayout
                   />
                 </div>

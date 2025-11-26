@@ -15,6 +15,8 @@ export type SectionId = CvSectionKey | `custom:${string}`;
 
 export interface FontSettings {
   fullName: number;
+  jobTitle: number;
+  contactDetail: number;
   sectionTitle: number;
   sectionItemTitle: number;
   sectionDetail: number;
@@ -146,4 +148,5 @@ export interface CvData {
    * 'personal' is treated specially (header) but may still appear here.
    */
   sectionsOrder: SectionId[];
+  fontSettings: FontSettings;
 }

@@ -5,6 +5,7 @@ import type {
   CustomSection,
   EducationEntry,
   ExperienceEntry,
+  FontSettings,
   Language,
   PersonalInfo,
   ProjectEntry,
@@ -73,6 +74,15 @@ export const createEmptyAchievement = (): AchievementEntry => ({
   context: '',
 });
 
+export const DEFAULT_FONT_SETTINGS: FontSettings = {
+  fullName: 28,
+  jobTitle: 12,
+  contactDetail: 12,
+  sectionTitle: 12,
+  sectionItemTitle: 14,
+  sectionDetail: 12,
+};
+
 export const createInitialCv = (): CvData => ({
   personalInfo: createEmptyPersonalInfo(),
   experience: [createEmptyExperience()],
@@ -94,6 +104,7 @@ export const createInitialCv = (): CvData => ({
     'languages',
     'education',
   ],
+  fontSettings: { ...DEFAULT_FONT_SETTINGS },
 });
 
 export const sectionLabel: Record<CvSectionKey, string> = {
@@ -131,6 +142,37 @@ export const normalizeSectionsOrder = (
     (section): section is SectionId => typeof section === 'string',
   );
   return sanitized.length > 0 ? sanitized : fallback;
+};
+
+const normalizeFontValue = (value: unknown, fallback: number) => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.max(0, value);
+};
+
+export const normalizeFontSettings = (value: unknown): FontSettings => {
+  const record = isRecord(value)
+    ? (value as Partial<FontSettings> & { contactDetails?: unknown })
+    : {};
+  return {
+    fullName: normalizeFontValue(record.fullName, DEFAULT_FONT_SETTINGS.fullName),
+    jobTitle: normalizeFontValue(record.jobTitle, DEFAULT_FONT_SETTINGS.jobTitle),
+    contactDetail: normalizeFontValue(
+      record.contactDetail ?? record.contactDetails,
+      DEFAULT_FONT_SETTINGS.contactDetail,
+    ),
+    sectionTitle: normalizeFontValue(
+      record.sectionTitle,
+      DEFAULT_FONT_SETTINGS.sectionTitle,
+    ),
+    sectionItemTitle: normalizeFontValue(
+      record.sectionItemTitle,
+      DEFAULT_FONT_SETTINGS.sectionItemTitle,
+    ),
+    sectionDetail: normalizeFontValue(
+      record.sectionDetail,
+      DEFAULT_FONT_SETTINGS.sectionDetail,
+    ),
+  };
 };
 
 export const normalizePersonalInfo = (value: unknown): PersonalInfo => {
@@ -433,6 +475,7 @@ export const normalizeCvData = (value: unknown): CvData | null => {
       candidate.sectionsOrder,
       baseSectionsOrder,
     ),
+    fontSettings: normalizeFontSettings(candidate.fontSettings),
   };
 };
 

@@ -169,13 +169,13 @@ const CvHeader: React.FC<CvHeaderProps> = ({ personalInfo }) => (
         <h1 className="text-xl font-semibold text-slate-900">
           {personalInfo.fullName || 'Your full name'}
         </h1>
-        <p className="text-[11px] text-slate-500">
+        <p className="font-job-title text-slate-500">
           {personalInfo.jobTitle || 'Job title or professional headline'}
         </p>
       </div>
     </div>
     <div className="flex flex-1 justify-end">
-      <div className="grid w-full max-w-md grid-cols-1 gap-1 text-[11px] text-slate-600 sm:grid-cols-2">
+      <div className="grid w-full max-w-md grid-cols-1 gap-1 font-contact-detail text-slate-600 sm:grid-cols-2">
         {personalInfo.email && (
           <p className="truncate">
             <span className="font-medium text-slate-700">Email:</span>{' '}
@@ -393,6 +393,8 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
   const pxToRem = (value: number) => `${Math.max(0, value) / 16}rem`;
   const fontVariableStyles = {
     '--font-full-name': pxToRem(fontSettings.fullName),
+    '--font-job-title': pxToRem(fontSettings.jobTitle),
+    '--font-contact-detail': pxToRem(fontSettings.contactDetail),
     '--font-section-title': pxToRem(fontSettings.sectionTitle),
     '--font-section-item-title': pxToRem(fontSettings.sectionItemTitle),
     '--font-section-detail': pxToRem(fontSettings.sectionDetail),

@@ -1,5 +1,6 @@
 import type { CvData, SectionId } from '../types';
 import { generateId } from '../utils/uuid';
+import { DEFAULT_FONT_SETTINGS } from './cvModel';
 
 export const createSampleCv = (): CvData => {
   const makeId = () => generateId();
@@ -231,5 +232,6 @@ export const createSampleCv = (): CvData => {
       'talks',
       ...customSectionIds,
     ],
+    fontSettings: { ...DEFAULT_FONT_SETTINGS },
   };
 };
