@@ -82,6 +82,7 @@ export const App: React.FC = () => {
   const [activeWorkspaceView, setActiveWorkspaceView] = useState<
     'sections' | 'preview'
   >('sections');
+  const [isAddSectionMenuOpen, setIsAddSectionMenuOpen] = useState(false);
   const confirmDialog = useConfirmDialog();
   const { addToast } = useToast();
   const {
@@ -101,6 +102,7 @@ export const App: React.FC = () => {
   const [fontSettings, setFontSettings] = useState<FontSettings>({
     ...defaultFontSettings,
   });
+  const addSectionMenuRef = useRef<HTMLDivElement | null>(null);
   const cvUploadInputRef = useRef<HTMLInputElement>(null);
   const activeCvEmbeddedPayload = useMemo(() => {
     try {
@@ -122,6 +124,23 @@ export const App: React.FC = () => {
   const printablePayload = pendingPrintJob
     ? printJobEmbeddedPayload
     : activeCvEmbeddedPayload;
+  const addSectionOptions: { id: CvSectionKey | 'custom'; label: string }[] =
+    useMemo(
+      () => [
+        { id: 'projects', label: sectionLabel.projects },
+        { id: 'experience', label: sectionLabel.experience },
+        { id: 'education', label: sectionLabel.education },
+        { id: 'skills', label: sectionLabel.skills },
+        { id: 'languages', label: sectionLabel.languages },
+        { id: 'volunteer', label: sectionLabel.volunteer },
+        { id: 'opensource', label: sectionLabel.opensource },
+        { id: 'achievements', label: sectionLabel.achievements },
+        { id: 'publications', label: sectionLabel.publications },
+        { id: 'talks', label: sectionLabel.talks },
+        { id: 'custom', label: 'Custom' },
+      ],
+      [],
+    );
   const fontControls: {
     key: keyof FontSettings;
     label: string;
@@ -171,6 +190,19 @@ export const App: React.FC = () => {
       return { ...prev, [key]: nextValue };
     });
   };
+  useEffect(() => {
+    if (!isAddSectionMenuOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        addSectionMenuRef.current &&
+        !addSectionMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsAddSectionMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isAddSectionMenuOpen]);
   useEffect(() => {
     window.fillForm = () => {
       const newId = generateId();
@@ -365,6 +397,47 @@ export const App: React.FC = () => {
     addToast(`Deleted "${name}".`, 'info');
   };
 
+  const handleAddSection = (sectionId: CvSectionKey) => {
+    if (sectionId === 'personal') return;
+    setCv((prev) => {
+      if (prev.sectionsOrder.includes(sectionId)) return prev;
+      return { ...prev, sectionsOrder: [...prev.sectionsOrder, sectionId] };
+    });
+    setActiveSection(sectionId);
+    setIsAddSectionMenuOpen(false);
+  };
+
+  const handleRemoveSection = (sectionId: SectionId) => {
+    if (sectionId === 'personal') return;
+    let nextActive: SectionId | null = null;
+    setCv((prev) => {
+      if (!prev.sectionsOrder.includes(sectionId)) return prev;
+      const nextSectionsOrder = prev.sectionsOrder.filter(
+        (id) => id !== sectionId,
+      );
+      const nextCustomSections = isCustomSectionId(sectionId)
+        ? prev.customSections.filter(
+            (section) => `custom:${section.id}` !== sectionId,
+          )
+        : prev.customSections;
+
+      if (activeSection === sectionId) {
+        nextActive =
+          (nextSectionsOrder.find((id) => id !== 'personal') ??
+            nextSectionsOrder[0]) || 'personal';
+      }
+
+      return {
+        ...prev,
+        customSections: nextCustomSections,
+        sectionsOrder: nextSectionsOrder,
+      };
+    });
+    if (nextActive) {
+      setActiveSection(nextActive);
+    }
+  };
+
   const handleAddCustomSection = () => {
     const id = crypto.randomUUID();
     setCv((prev) => ({
@@ -376,6 +449,7 @@ export const App: React.FC = () => {
       sectionsOrder: [...prev.sectionsOrder, `custom:${id}`],
     }));
     setActiveSection(`custom:${id}`);
+    setIsAddSectionMenuOpen(false);
   };
 
   const reorderSections = (sourceId: SectionId, targetId: SectionId) => {
@@ -809,18 +883,82 @@ export const App: React.FC = () => {
                           >
                             <ChevronDownIcon className="h-4 w-4" />
                           </button>
+                          <button
+                            type="button"
+                            className={`${sectionsSidebarArrowButton} ${
+                              isPersonal ? '' : 'text-slate-700 hover:text-rose-700'
+                            }`}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              handleRemoveSection(id);
+                            }}
+                            disabled={isPersonal}
+                            aria-label="Remove section"
+                            title="Remove section"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
                     );
                   })}
                 </nav>
-                <button
-                  type="button"
-                  onClick={handleAddCustomSection}
-                  className="mt-3 inline-flex items-center gap-1 rounded-md border border-dashed border-slate-300 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
-                >
-                  <span>+ Add section</span>
-                </button>
+                <div className="relative mt-3" ref={addSectionMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIsAddSectionMenuOpen((previous) => !previous)
+                    }
+                    className="inline-flex w-full items-center justify-between gap-2 rounded-md border border-dashed border-slate-300 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    <span>+ Add section</span>
+                    <ChevronDownIcon
+                      className={`h-4 w-4 transition ${isAddSectionMenuOpen ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+                  {isAddSectionMenuOpen && (
+                    <div className="absolute z-20 mt-2 w-56 rounded-md border border-slate-200 bg-white shadow-lg">
+                      <div className="border-b border-slate-100 px-3 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                          Choose a section
+                        </p>
+                      </div>
+                      <div className="p-1">
+                        {addSectionOptions.map((option) => {
+                          const alreadyAdded =
+                            option.id !== 'custom' &&
+                            cv.sectionsOrder.includes(option.id);
+                          return (
+                            <button
+                              key={option.id}
+                              type="button"
+                              onClick={() => {
+                                if (option.id === 'custom') {
+                                  handleAddCustomSection();
+                                  return;
+                                }
+                                handleAddSection(option.id);
+                              }}
+                              className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-[11px] font-medium transition ${
+                                alreadyAdded
+                                  ? 'bg-slate-50 text-slate-500'
+                                  : 'hover:bg-slate-50 text-slate-700'
+                              }`}
+                            >
+                              <span>{option.label}</span>
+                              {alreadyAdded && (
+                                <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
+                                  Added
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </aside>
 
@@ -929,20 +1067,7 @@ export const App: React.FC = () => {
                     ),
                   }))
                 }
-                onDelete={() =>
-                  setCv((prev) => {
-                    const id = activeSection.replace('custom:', '');
-                    return {
-                      ...prev,
-                      customSections: prev.customSections.filter(
-                        (section) => section.id !== id,
-                      ),
-                      sectionsOrder: prev.sectionsOrder.filter(
-                        (sectionId) => sectionId !== activeSection,
-                      ),
-                    };
-                  })
-                }
+                onDelete={() => handleRemoveSection(activeSection)}
               />
             )}
           </div>

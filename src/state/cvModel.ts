@@ -88,16 +88,11 @@ export const createInitialCv = (): CvData => ({
   customSections: [],
   sectionsOrder: [
     'personal',
-    'experience',
     'projects',
-    'education',
+    'experience',
     'skills',
     'languages',
-    'volunteer',
-    'opensource',
-    'achievements',
-    'publications',
-    'talks',
+    'education',
   ],
 });
 
