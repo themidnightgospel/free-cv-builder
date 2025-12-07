@@ -81,3 +81,17 @@
 .cv-markdown p + p {
   margin-top: 0.5rem;
 }
+
+.cv-markdown ul,
+.cv-markdown ol {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.cv-markdown ul li {
+  list-style-type: disc;
+}
+
+.cv-markdown ol li {
+  list-style-type: decimal;
+}
