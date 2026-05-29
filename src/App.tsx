@@ -107,6 +107,7 @@ export const App: React.FC = () => {
       return '';
     }
   }, [cv]);
+  const landingSampleCv = useMemo(() => createSampleCv(), []);
   const printJobEmbeddedPayload = useMemo(() => {
     if (!pendingPrintJob) return '';
     try {
@@ -701,20 +702,23 @@ export const App: React.FC = () => {
             className="pointer-events-none absolute bottom-0 right-0 h-96 w-96 translate-x-1/3 translate-y-1/3 rounded-full bg-amber-200/30 blur-3xl"
           />
 
-          <div className="relative mx-auto w-full max-w-md">
-            <div className="mb-10 text-center">
+          <div className="relative mx-auto w-full max-w-6xl">
+            <div className="grid grid-cols-1 items-center gap-y-12 lg:grid-cols-12 lg:gap-x-10 xl:gap-x-16">
+              {/* LEFT — content */}
+              <div className="mx-auto w-full max-w-md lg:col-span-6 lg:mx-0 lg:max-w-none">
+            <div className="mb-10 text-center lg:text-left">
               <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-paper/70 px-3 py-1 text-[11px] font-medium text-muted shadow-soft backdrop-blur">
                 <span className="flex h-1.5 w-1.5 rounded-full bg-accent" />
                 Open source · MIT
               </span>
-              <h1 className="mt-6 text-[44px] font-semibold leading-[1.05] tracking-tight text-ink sm:text-[52px]">
+              <h1 className="mt-6 text-[44px] font-semibold leading-[1.05] tracking-tight text-ink sm:text-[52px] lg:text-[56px]">
                 Free CV builder
               </h1>
-              <p className="mx-auto mt-5 max-w-sm text-[15px] leading-relaxed text-muted">
+              <p className="mx-auto mt-5 max-w-sm text-[15px] leading-relaxed text-muted lg:mx-0">
                 Make a clean, professional CV in a few minutes. Download as PDF.
                 No account. No tracking. No surprises.
               </p>
-              <ul className="mx-auto mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[12px] text-muted">
+              <ul className="mx-auto mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[12px] text-muted lg:mx-0 lg:justify-start">
                 {[
                   'No paywall',
                   'No signup',
@@ -834,7 +838,7 @@ export const App: React.FC = () => {
               )}
             </div>
 
-            <p className="mt-8 text-center text-[12px] text-muted">
+            <p className="mt-8 text-center text-[12px] text-muted lg:text-left">
               Open source on{' '}
               <a
                 href="https://github.com/themidnightgospel/free-cv-builder"
@@ -845,6 +849,38 @@ export const App: React.FC = () => {
                 GitHub
               </a>
             </p>
+              </div>
+
+              {/* RIGHT — CV poster (lg+ only, decorative) */}
+              <div
+                className="hidden lg:col-span-6 lg:block"
+                aria-hidden="true"
+              >
+                <div className="group relative">
+                  {/* Layered shadow papers behind the main poster */}
+                  <div className="pointer-events-none absolute left-6 top-6 h-full w-full origin-top-right -rotate-3 rounded-md bg-slate-100/80 shadow-soft transition-transform duration-500 ease-out group-hover:-rotate-2" />
+                  <div className="pointer-events-none absolute left-3 top-3 h-full w-full origin-top-right rotate-1 rounded-md bg-paper/95 shadow-soft transition-transform duration-500 ease-out group-hover:rotate-0" />
+
+                  {/* The active CV poster */}
+                  <div className="relative origin-bottom-left rotate-[1.5deg] transition-transform duration-500 ease-out group-hover:rotate-0 group-hover:-translate-y-1">
+                    <div className="relative aspect-[1/1.4142] w-full overflow-hidden rounded-md bg-paper px-7 py-6 text-slate-900 shadow-lift [mask-image:linear-gradient(to_bottom,black_72%,transparent_100%)]">
+                      <div className="pointer-events-none h-full w-full">
+                        <CvPreview
+                          cv={landingSampleCv}
+                          fontSettings={DEFAULT_FONT_SETTINGS}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Floating caption chip */}
+                  <span className="absolute -bottom-2 left-4 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-paper/90 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-muted shadow-soft backdrop-blur">
+                    <span className="h-1 w-1 rounded-full bg-accent" />
+                    A sample CV
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </>
