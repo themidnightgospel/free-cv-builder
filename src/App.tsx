@@ -582,45 +582,79 @@ export const App: React.FC = () => {
   );
 
   const header = (
-    <header className="fixed inset-x-0 top-0 z-20 bg-white/90 border-b border-gray-200 shadow-sm print:hidden">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-3">
+    <header className="fixed inset-x-0 top-0 z-20 border-b border-slate-200/80 bg-canvas/85 backdrop-blur-md print:hidden">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
-            className="text-sm text-gray-500 hover:text-gray-700"
+            className="rounded-full p-1.5 text-muted transition hover:bg-slate-100 hover:text-ink"
             onClick={() => {
               setMode('landing');
             }}
+            aria-label="Back to start"
+            title="Back to start"
           >
-            ← Back to start
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="h-4 w-4"
+            >
+              <path
+                fillRule="evenodd"
+                d="M12.79 5.23a.75.75 0 0 1 0 1.06L9.06 10l3.73 3.71a.75.75 0 1 1-1.06 1.06l-4.25-4.24a.75.75 0 0 1 0-1.06l4.25-4.24a.75.75 0 0 1 1.06 0Z"
+                clipRule="evenodd"
+              />
+            </svg>
           </button>
-          <div className="h-6 w-px bg-gray-200" />
-          <div>
-            <div className="text-sm font-semibold text-gray-900">
-                Truly free CV builder
-            </div>
-            <div className="text-xs text-gray-500">
-                No paywall, no sign-up, no data harvesting
-            </div>
+          <div className="hidden h-5 w-px bg-slate-200 sm:block" />
+          <div className="hidden min-w-0 items-center gap-2.5 sm:flex">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/10 text-accent">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-3.5 w-3.5"
+              >
+                <path d="M4.5 3A1.5 1.5 0 0 0 3 4.5v11A1.5 1.5 0 0 0 4.5 17h11a1.5 1.5 0 0 0 1.5-1.5v-11A1.5 1.5 0 0 0 15.5 3h-11ZM7 7.25a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5h-4.5A.75.75 0 0 1 7 7.25Zm.75 2.75a.75.75 0 0 0 0 1.5h4.5a.75.75 0 0 0 0-1.5h-4.5Zm0 3.25a.75.75 0 0 0 0 1.5h2.5a.75.75 0 0 0 0-1.5h-2.5Z" />
+              </svg>
+            </span>
+            <span className="text-[15px] font-semibold tracking-tight text-ink">
+              freecv
+            </span>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2.5">
           <span
-            className={`rounded-full px-3 py-1 text-xs font-medium border ${
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
               hasUnsavedChanges
-                ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
-                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                ? 'bg-amber-100/70 text-amber-800'
+                : 'bg-accent-soft text-accent-dark'
             }`}
           >
-            {hasUnsavedChanges ? 'Unsaved changes' : 'Changes saved'}
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                hasUnsavedChanges ? 'bg-amber-500' : 'bg-accent'
+              }`}
+            />
+            {hasUnsavedChanges ? 'Unsaved' : 'Saved'}
           </span>
           <button
             type="button"
             onClick={handleDownloadPdf}
             disabled={isPreparingPdf}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
+            className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-[13px] font-medium text-paper shadow-soft transition hover:bg-accent-dark disabled:cursor-not-allowed disabled:bg-slate-300"
           >
-            {isPreparingPdf ? 'Preparing PDF…' : 'Download PDF'}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="h-3.5 w-3.5"
+            >
+              <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z" />
+              <path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" />
+            </svg>
+            {isPreparingPdf ? 'Preparing…' : 'Download PDF'}
           </button>
         </div>
         {importError && (
@@ -656,101 +690,160 @@ export const App: React.FC = () => {
         <PdfPayloadPortal payload={printablePayload} />
         <PdfPayloadPrintBlock payload={printablePayload} />
         {importErrorModal}
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-sm border border-slate-200 p-8 space-y-6">
-            <div className="space-y-2 text-center">
-              <h1 className="text-2xl font-semibold text-slate-900">
-                  Truly free CV builder
+        <div className="relative min-h-screen overflow-hidden bg-canvas px-4 py-14 sm:py-20">
+          {/* Soft ambient color blobs */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -top-32 -left-24 h-80 w-80 rounded-full bg-accent/15 blur-3xl"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute bottom-0 right-0 h-96 w-96 translate-x-1/3 translate-y-1/3 rounded-full bg-amber-200/30 blur-3xl"
+          />
+
+          <div className="relative mx-auto w-full max-w-md">
+            <div className="mb-10 text-center">
+              <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-paper/70 px-3 py-1 text-[11px] font-medium text-muted shadow-soft backdrop-blur">
+                <span className="flex h-1.5 w-1.5 rounded-full bg-accent" />
+                Open source · MIT
+              </span>
+              <h1 className="mt-6 text-[44px] font-semibold leading-[1.05] tracking-tight text-ink sm:text-[52px]">
+                Free CV builder
               </h1>
-            </div>
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={handleCreateNew}
-                className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
-              >
-                Create new CV
-              </button>
-              <p className="text-center text-xs font-medium text-slate-500">
-                or do you have existing cv built using buildmyfree.cv ?
+              <p className="mx-auto mt-5 max-w-sm text-[15px] leading-relaxed text-muted">
+                Make a clean, professional CV in a few minutes. Download as PDF.
+                No account. No tracking. No surprises.
               </p>
-              <button
-                type="button"
-                onClick={() => cvUploadInputRef.current?.click()}
-                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-              >
-                Upload existing CV
-              </button>
-              <input
-                ref={cvUploadInputRef}
-                type="file"
-                accept="application/pdf,.pdf"
-                className="hidden"
-                onChange={handlePdfUploadChange}
-              />
+              <ul className="mx-auto mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[12px] text-muted">
+                {[
+                  'No paywall',
+                  'No signup',
+                  'No data harvesting',
+                  'No watermarks',
+                ].map((label) => (
+                  <li key={label} className="inline-flex items-center gap-1.5">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className="h-3.5 w-3.5 text-accent"
+                      aria-hidden
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.704 5.29a.75.75 0 0 1 .006 1.06l-7.5 7.59a.75.75 0 0 1-1.07.005l-3.75-3.75a.75.75 0 1 1 1.06-1.06l3.213 3.213 6.97-7.052a.75.75 0 0 1 1.061-.006Z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    {label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-paper p-5 shadow-soft">
+              <div className="space-y-2.5">
+                <button
+                  type="button"
+                  onClick={handleCreateNew}
+                  className="group flex w-full items-center justify-center gap-2 rounded-xl bg-ink px-5 py-3 text-[14px] font-medium text-paper shadow-soft transition hover:bg-accent-dark"
+                >
+                  Create new CV
+                  <span className="transition group-hover:translate-x-0.5">
+                    →
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => cvUploadInputRef.current?.click()}
+                  className="group flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-paper px-5 py-3 text-[14px] font-medium text-ink transition hover:border-slate-300 hover:bg-slate-50"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    className="h-4 w-4 text-muted transition group-hover:text-ink"
+                    aria-hidden
+                  >
+                    <path d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 1 0 1.09 1.03L9.25 4.636v8.614Z" />
+                    <path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" />
+                  </svg>
+                  Upload existing CV
+                </button>
+                <input
+                  ref={cvUploadInputRef}
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  className="hidden"
+                  onChange={handlePdfUploadChange}
+                />
+                <p className="text-center text-[11px] text-muted">
+                  Continue editing a PDF you made on buildmyfree.cv
+                </p>
+              </div>
+
               {nonEmptySavedCvs.length > 0 && (
-                <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 space-y-2">
-                  <p className="text-xs font-semibold tracking-wide text-slate-500">
-                    Saved CVs on this browser
+                <div className="mt-5 border-t border-slate-200 pt-4">
+                  <p className="mb-2 px-1 text-[11px] font-medium uppercase tracking-wider text-muted">
+                    Continue on this browser
                   </p>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {[...nonEmptySavedCvs]
                       .sort((a, b) => b.updatedAt - a.updatedAt)
                       .map((record) => (
                         <div
                           key={record.id}
-                          className="flex items-stretch gap-2"
+                          className="group flex items-stretch gap-1.5"
                         >
                           <button
                             type="button"
                             onClick={() => handleSelectSavedCv(record.id)}
-                            className="flex-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-left text-sm hover:border-slate-300 hover:bg-slate-50"
+                            className="flex-1 rounded-xl border border-transparent px-3 py-2 text-left transition hover:border-slate-200 hover:bg-slate-50"
                           >
-                            <div className="flex items-center justify-between">
-                              <span className="font-semibold text-slate-900">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[14px] font-medium text-ink">
                                 {record.name}
                               </span>
-                              <span className="text-[11px] text-slate-400">
+                              <span className="text-[11px] text-muted">
                                 {new Date(record.updatedAt).toLocaleDateString()}
                               </span>
                             </div>
-                            <p className="text-[11px] text-slate-500">
-                              Last updated{' '}
-                              {new Date(record.updatedAt).toLocaleTimeString()}
+                            <p className="mt-0.5 text-[11px] text-muted">
+                              Last edited{' '}
+                              {new Date(record.updatedAt).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
                             </p>
                           </button>
-                          <div className="flex flex-col justify-center">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleDeleteSavedCv(record.id, record.name)
-                              }
-                              className="flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-2 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-                              aria-label={`Delete ${record.name}`}
-                              title="Delete saved CV"
-                            >
-                              <TrashIcon className="h-4 w-4" aria-hidden="true" />
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleDeleteSavedCv(record.id, record.name)
+                            }
+                            className="flex items-center justify-center rounded-xl px-3 text-muted transition hover:bg-red-50 hover:text-red-600"
+                            aria-label={`Delete ${record.name}`}
+                            title="Delete saved CV"
+                          >
+                            <TrashIcon className="h-4 w-4" aria-hidden="true" />
+                          </button>
                         </div>
                       ))}
                   </div>
                 </div>
               )}
             </div>
-            <p className="text-xs text-slate-500 text-center font-semibold">
-                No paywall, no sign-up, no data harvesting, no ‘free until download’, no watermarks
-            </p>
-            <p className="text-xs text-slate-500 text-center font-semibold">
-                Open-source on{' '}
-                <a
-                  href="https://github.com/themidnightgospel/free-cv-builder"
-                  className="text-blue-600 hover:underline"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  GitHub
-                </a>
+
+            <p className="mt-8 text-center text-[12px] text-muted">
+              Open source on{' '}
+              <a
+                href="https://github.com/themidnightgospel/free-cv-builder"
+                className="font-medium text-ink underline decoration-accent decoration-2 underline-offset-4 transition hover:text-accent"
+                target="_blank"
+                rel="noreferrer"
+              >
+                GitHub
+              </a>
             </p>
           </div>
         </div>

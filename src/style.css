@@ -48,6 +48,14 @@
   --font-section-title: 0.75rem;
   --font-section-item-title: 0.875rem;
   --font-section-detail: 0.75rem;
+  font-family: 'Source Sans 3', system-ui, -apple-system, sans-serif;
+  font-feature-settings: 'kern' 1, 'liga' 1;
+}
+
+.cv-preview-content h1 {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .cv-preview-content .text-xl {
