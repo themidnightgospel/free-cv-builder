@@ -7,6 +7,16 @@ import { formatMonthForDisplay } from '../utils/dateFields';
 const hasText = (value?: string | null): boolean =>
   Boolean(value && value.trim().length > 0);
 
+const preserveBlankLines = (markdown: string): string => {
+  const normalized = markdown.replace(/\r\n?/g, '\n');
+  const stripped = normalized.replace(/\n[ \t]+(?=\n)/g, '\n');
+  return stripped.replace(/\n{2,}/g, (run) => {
+    const extra = run.length - 2;
+    if (extra <= 0) return run;
+    return '\n\n' + ' \n\n'.repeat(extra);
+  });
+};
+
 const hasMeaningfulExperience = (experience: CvData['experience']): boolean =>
   experience.some((e) => hasText(e.jobTitle) && hasText(e.company));
 
@@ -435,7 +445,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
             <div className="text-[11px] text-slate-700">
               <div className="cv-markdown">
                 <ReactMarkdown skipHtml components={markdownComponents}>
-                  {personalInfo.summary}
+                  {preserveBlankLines(personalInfo.summary)}
                 </ReactMarkdown>
               </div>
             </div>
@@ -493,7 +503,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                                       skipHtml
                                       components={markdownComponents}
                                     >
-                                      {e.description}
+                                      {preserveBlankLines(e.description)}
                                     </ReactMarkdown>
                                   </div>
                                 </div>
@@ -551,7 +561,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                                       skipHtml
                                       components={markdownComponents}
                                     >
-                                      {e.description}
+                                      {preserveBlankLines(e.description)}
                                     </ReactMarkdown>
                                   </div>
                                 </div>
@@ -600,7 +610,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                                 skipHtml
                                 components={markdownComponents}
                               >
-                                {p.description}
+                                {preserveBlankLines(p.description)}
                               </ReactMarkdown>
                             </div>
                           </div>
@@ -612,7 +622,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                                 skipHtml
                                 components={markdownComponents}
                               >
-                                {p.achievements}
+                                {preserveBlankLines(p.achievements)}
                               </ReactMarkdown>
                             </div>
                           </div>
@@ -908,7 +918,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                         skipHtml
                         components={markdownComponents}
                       >
-                        {section.body}
+                        {preserveBlankLines(section.body)}
                       </ReactMarkdown>
                     </div>
                   </div>

@@ -127,6 +127,9 @@ export const hasAnyText = (...values: string[]): boolean =>
 export const normalizeString = (value: unknown): string =>
   typeof value === 'string' ? value.trim() : '';
 
+export const normalizeMultilineString = (value: unknown): string =>
+  typeof value === 'string' ? value : '';
+
 export const ensureId = (value: unknown): string =>
   typeof value === 'string' && value.trim().length > 0 ? value : generateId();
 
@@ -183,7 +186,7 @@ export const normalizePersonalInfo = (value: unknown): PersonalInfo => {
     ...base,
     fullName: normalizeString(record.fullName ?? base.fullName),
     jobTitle: normalizeString(record.jobTitle ?? base.jobTitle),
-    summary: normalizeString(record.summary ?? base.summary),
+    summary: normalizeMultilineString(record.summary ?? base.summary),
     email: normalizeString(record.email ?? base.email),
     phone: normalizeString(record.phone ?? base.phone),
     location: normalizeString(record.location ?? base.location),
@@ -206,7 +209,7 @@ export const normalizeExperienceEntry = (
   const location = normalizeString(record.location);
   const startDate = normalizeString(record.startDate);
   const endDate = normalizeString(record.endDate);
-  const description = normalizeString(record.description);
+  const description = normalizeMultilineString(record.description);
   const isCurrent = record.isCurrent === true;
   if (
     !hasAnyText(jobTitle, company, location, startDate, endDate, description) &&
@@ -236,7 +239,7 @@ export const normalizeEducationEntry = (
   const location = normalizeString(record.location);
   const startYear = normalizeString(record.startYear);
   const endYear = normalizeString(record.endYear);
-  const description = normalizeString(record.description);
+  const description = normalizeMultilineString(record.description);
   const isCurrent = record.isCurrent === true;
   if (
     !hasAnyText(degree, institution, location, startYear, endYear, description) &&
@@ -264,8 +267,8 @@ export const normalizeProjectEntry = (
   const name = normalizeString(record.name);
   const role = normalizeString(record.role);
   const techStack = normalizeString(record.techStack);
-  const description = normalizeString(record.description);
-  const achievements = normalizeString(record.achievements);
+  const description = normalizeMultilineString(record.description);
+  const achievements = normalizeMultilineString(record.achievements);
   const link = normalizeString(record.link);
   if (!hasAnyText(name, role, techStack, description, achievements, link)) {
     return null;
@@ -289,7 +292,7 @@ export const normalizeAchievementEntry = (
   const name = normalizeString(record.name);
   const organization = normalizeString(record.organization);
   const date = normalizeString(record.date);
-  const context = normalizeString(record.context);
+  const context = normalizeMultilineString(record.context);
   if (!hasAnyText(name, organization, date, context)) {
     return null;
   }
@@ -356,7 +359,7 @@ export const normalizeVolunteerEntry = (
   const location = normalizeString(record.location);
   const startDate = normalizeString(record.startDate);
   const endDate = normalizeString(record.endDate);
-  const responsibilities = normalizeString(record.responsibilities);
+  const responsibilities = normalizeMultilineString(record.responsibilities);
   const isCurrent = record.isCurrent === true;
   if (
     !hasAnyText(
@@ -425,7 +428,7 @@ export const normalizeCustomSection = (
   if (!isRecord(value)) return null;
   const record = value as Record<string, unknown>;
   const title = normalizeString(record.title);
-  const body = normalizeString(record.body);
+  const body = normalizeMultilineString(record.body);
   if (!hasAnyText(title, body)) {
     return null;
   }
