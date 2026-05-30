@@ -116,7 +116,7 @@ export const AdvancedPanel: React.FC<AdvancedPanelProps> = ({
   return (
     <section
       data-testid="advanced-panel"
-      className="mt-6 rounded-2xl border border-slate-200 bg-paper shadow-soft print:hidden"
+      className="rounded-2xl border border-slate-200 bg-paper shadow-soft print:hidden"
     >
       <header className="flex items-center justify-between gap-3 px-5 py-4">
         <div>

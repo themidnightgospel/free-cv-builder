@@ -750,18 +750,6 @@ export const App: React.FC = () => {
       <div className="min-h-screen bg-canvas">
         {header}
       <main className="mx-auto max-w-[900px] px-4 pt-24 pb-16 print:block print:max-w-none print:px-0 print:pt-0 print:pb-0">
-        {/* The CV preview IS the editor. Inline + popover editing. */}
-        <div className="rounded-3xl bg-paper shadow-lift print:hidden">
-          <div className="px-8 py-6">
-            <CvPreview
-              cv={cv}
-              fontSettings={fontSettings}
-              advancedSettings={advancedSettings}
-              editor={editorBindings}
-            />
-          </div>
-        </div>
-
         <div className="print:hidden">
           <AdvancedPanel
             fontSettings={fontSettings}
@@ -773,6 +761,18 @@ export const App: React.FC = () => {
               setCv((prev) => ({ ...prev, advancedSettings: next }))
             }
           />
+        </div>
+
+        {/* The CV preview IS the editor. Inline + popover editing. */}
+        <div className="mt-6 rounded-3xl bg-paper shadow-lift print:hidden">
+          <div className="px-8 py-6">
+            <CvPreview
+              cv={cv}
+              fontSettings={fontSettings}
+              advancedSettings={advancedSettings}
+              editor={editorBindings}
+            />
+          </div>
         </div>
 
         {pendingPrintJob && (
