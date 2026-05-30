@@ -1,23 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ChevronDownIcon,
-  ChevronUpIcon,
-  TrashIcon,
-} from '@heroicons/react/24/outline';
-import type { CvData, CvSectionKey, FontSettings, SectionId } from './types';
-import { PersonalInfoForm } from './components/PersonalInfoForm';
-import { ExperienceForm } from './components/ExperienceForm';
-import { EducationForm } from './components/EducationForm';
-import { SkillsForm } from './components/SkillsForm';
+import { TrashIcon } from '@heroicons/react/24/outline';
+import type { CvData, CvSectionKey, SectionId } from './types';
 import { CvPreview } from './components/CvPreview';
-import { CustomSectionForm } from './components/CustomSectionForm';
-import { ProjectsForm } from './components/ProjectsForm';
-import { AchievementsForm } from './components/AchievementsForm';
-import { PublicationsForm } from './components/PublicationsForm';
-import { TalksForm } from './components/TalksForm';
-import { VolunteerForm } from './components/VolunteerForm';
-import { OpenSourceForm } from './components/OpenSourceForm';
-import { LanguagesForm } from './components/LanguagesForm';
+import { AdvancedPanel } from './components/AdvancedPanel';
 import { PhotoCropModal } from './components/PhotoCropModal';
 import { useConfirmDialog } from './components/ConfirmDialogProvider';
 import { encodeCvPayloadForText } from './pdf/encodeCvPayload';
@@ -25,6 +10,7 @@ import {
   extractEmbeddedCvJsonFromPdf,
   extractProfileImageFromPdf,
 } from './pdf/pdfExtraction';
+import { parseCvFromPdfTextLayer } from './pdf/textLayerParser';
 import { PdfPayloadPortal, PdfPayloadPrintBlock } from './pdf/PdfPayloadEmbed';
 import {
   CURRENT_CV_ID_STORAGE_KEY,
@@ -32,22 +18,16 @@ import {
   type SavedCvRecord,
 } from './state/cvStorage';
 import {
-  createEmptyAchievement,
-  createEmptyEducation,
-  createEmptyExperience,
-  createEmptyProject,
   createInitialCv,
   hasMeaningfulCv,
-  hasMeaningfulAchievements,
   hasMeaningfulEducation,
   hasMeaningfulExperience,
-  hasMeaningfulProjects,
-  hasMeaningfulVolunteer,
   isCustomSectionId,
   normalizeCvData,
-  DEFAULT_FONT_SETTINGS,
   sectionLabel,
   validatePersonalInfo,
+  DEFAULT_ADVANCED_SETTINGS,
+  DEFAULT_FONT_SETTINGS,
 } from './state/cvModel';
 import { useToast } from './components/toast/ToastProvider';
 import {
@@ -59,7 +39,6 @@ import {
 import { usePdfExport } from './pdf/usePdfExport';
 import { createSampleCv } from './state/sampleCv';
 import { generateId } from './utils/uuid';
-import { sectionsSidebarArrowButton } from './components/iconButtonStyles';
 
 declare global {
   interface Window {
@@ -73,18 +52,10 @@ const PREVIEW_SURFACE_CLASSNAMES =
 export const App: React.FC = () => {
   const [mode, setMode] = useState<'landing' | 'editor'>('landing');
   const [cv, setCv] = useState<CvData>(() => createInitialCv());
-  const [activeSection, setActiveSection] = useState<SectionId>('personal');
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [importError, setImportError] = useState<string | null>(null);
   const [photoCropImageSrc, setPhotoCropImageSrc] = useState<string | null>(null);
-  const [draggingSectionId, setDraggingSectionId] = useState<SectionId | null>(
-    null,
-  );
-  const [activeWorkspaceView, setActiveWorkspaceView] = useState<
-    'sections' | 'preview'
-  >('sections');
-  const [isAddSectionMenuOpen, setIsAddSectionMenuOpen] = useState(false);
   const confirmDialog = useConfirmDialog();
   const { addToast } = useToast();
   const {
@@ -96,8 +67,7 @@ export const App: React.FC = () => {
   } = useCvPersistence(cv, mode);
   const { isPreparingPdf, pendingPrintJob, downloadCvPdf } = usePdfExport(addToast);
   const fontSettings = cv.fontSettings;
-  const [isAdvancedOptionsOpen, setIsAdvancedOptionsOpen] = useState(false);
-  const addSectionMenuRef = useRef<HTMLDivElement | null>(null);
+  const advancedSettings = cv.advancedSettings ?? DEFAULT_ADVANCED_SETTINGS;
   const cvUploadInputRef = useRef<HTMLInputElement>(null);
   const activeCvEmbeddedPayload = useMemo(() => {
     try {
@@ -137,105 +107,6 @@ export const App: React.FC = () => {
       ],
       [],
     );
-  const fontControlSections: {
-    id: string;
-    title: string;
-    controls: {
-      key: keyof FontSettings;
-      label: string;
-      helper: string;
-      step?: number;
-    }[];
-  }[] = [
-    {
-      id: 'personal-info',
-      title: 'Personal Info Options',
-      controls: [
-        {
-          key: 'fullName',
-          label: 'Full name font size',
-          helper: 'Controls the hero name in the header.',
-          step: 2,
-        },
-        {
-          key: 'jobTitle',
-          label: 'Job title font size',
-          helper: 'Applies to the role beneath your name.',
-          step: 1,
-        },
-        {
-          key: 'contactDetail',
-          label: 'Contact details font size',
-          helper: 'Email, phone, links in header column 3.',
-          step: 1,
-        },
-      ],
-    },
-    {
-      id: 'sections',
-      title: 'Section Typography',
-      controls: [
-        {
-          key: 'sectionTitle',
-          label: 'Section title font size',
-          helper: 'Applies to headings like Experience or Skills.',
-          step: 1,
-        },
-        {
-          key: 'sectionItemTitle',
-          label: 'Section item title font size',
-          helper: 'Used for job titles, project names, etc.',
-          step: 1,
-        },
-        {
-          key: 'sectionDetail',
-          label: 'Section details font size',
-          helper: 'Controls the body text under each entry.',
-          step: 1,
-        },
-      ],
-    },
-  ];
-
-  const handleFontSettingChange = (
-    key: keyof FontSettings,
-    value: number,
-  ) => {
-    const nextValue = Number.isFinite(value) ? Math.max(0, value) : 0;
-    setCv((prev) => ({
-      ...prev,
-      fontSettings: { ...prev.fontSettings, [key]: nextValue },
-    }));
-  };
-  const adjustFontSetting = (
-    key: keyof FontSettings,
-    delta: number,
-  ) => {
-    setCv((prev) => {
-      const current = prev.fontSettings[key];
-      const nextValue = Math.max(
-        0,
-        Math.round((current + delta) * 10) / 10,
-      );
-      return {
-        ...prev,
-        fontSettings: { ...prev.fontSettings, [key]: nextValue },
-      };
-    });
-  };
-  useEffect(() => {
-    if (!isAddSectionMenuOpen) return;
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        addSectionMenuRef.current &&
-        !addSectionMenuRef.current.contains(event.target as Node)
-      ) {
-        setIsAddSectionMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isAddSectionMenuOpen]);
   useEffect(() => {
     window.fillForm = () => {
       const newId = generateId();
@@ -243,8 +114,6 @@ export const App: React.FC = () => {
       persistCurrentCvId(newId);
       setMode('editor');
       setCv(createSampleCv());
-      setActiveSection('experience');
-      setActiveWorkspaceView('sections');
     };
     return () => {
       delete window.fillForm;
@@ -274,9 +143,7 @@ export const App: React.FC = () => {
         setCurrentCvId(match.id);
         persistCurrentCvId(match.id);
         setMode('editor');
-        setActiveSection('personal');
-        setActiveWorkspaceView('sections');
-        setShowValidationModal(false);
+            setShowValidationModal(false);
         setValidationErrors([]);
       }
     }
@@ -304,8 +171,6 @@ export const App: React.FC = () => {
     persistCurrentCvId(newId);
     setCv(nextCv);
     setMode('editor');
-    setActiveSection('personal');
-    setActiveWorkspaceView('sections');
     setShowValidationModal(false);
     setValidationErrors([]);
     addToast(`CV loaded from ${sourceLabel}.`, 'success');
@@ -325,15 +190,36 @@ export const App: React.FC = () => {
       );
 
       const jsonText = await extractEmbeddedCvJsonFromPdf(cloneBytes());
-      if (!jsonText) {
-        setImportError(
-          'This CV must be created using Free CV Builder. Please upload a PDF exported from Free CV Builder.',
+      const photoDataUrl = await photoFromPdfPromise;
+
+      if (jsonText) {
+        importCvFromJsonText(jsonText, 'PDF file', photoDataUrl || undefined);
+        return;
+      }
+
+      const parsedFromText = await parseCvFromPdfTextLayer(cloneBytes());
+      if (parsedFromText) {
+        const withPhoto =
+          photoDataUrl && !parsedFromText.personalInfo.photoDataUrl
+            ? {
+                ...parsedFromText,
+                personalInfo: {
+                  ...parsedFromText.personalInfo,
+                  photoDataUrl,
+                },
+              }
+            : parsedFromText;
+        importCvFromJsonText(
+          JSON.stringify(withPhoto),
+          'PDF file (text recovery)',
+          photoDataUrl || undefined,
         );
         return;
       }
 
-      const photoDataUrl = await photoFromPdfPromise;
-      importCvFromJsonText(jsonText, 'PDF file', photoDataUrl || undefined);
+      setImportError(
+        'Could not read CV data from this PDF. Try a PDF exported from Free CV Builder, or paste content manually.',
+      );
     } catch (error) {
       console.error(error);
       setImportError(
@@ -344,60 +230,12 @@ export const App: React.FC = () => {
     }
   };;
 
-  const sectionStatuses = useMemo(() => {
-    const personalValidation = validatePersonalInfo(cv.personalInfo);
-    return {
-      personal: personalValidation.isValid ? 'valid' : personalValidation.errors.length > 0 ? 'incomplete' : 'empty',
-      experience: hasMeaningfulExperience(cv.experience)
-        ? 'valid'
-        : cv.experience.some((e) => e.jobTitle || e.company)
-        ? 'incomplete'
-        : 'empty',
-      education: hasMeaningfulEducation(cv.education)
-        ? 'valid'
-        : cv.education.some((e) => e.degree || e.institution)
-        ? 'incomplete'
-        : 'empty',
-      projects: hasMeaningfulProjects(cv.projects)
-        ? 'valid'
-        : cv.projects.some((p) => p.name || p.role)
-        ? 'incomplete'
-        : 'empty',
-      achievements: hasMeaningfulAchievements(cv.achievements)
-        ? 'valid'
-        : cv.achievements.some((a) => a.name || a.organization)
-        ? 'incomplete'
-        : 'empty',
-      publications:
-        cv.publications.length > 0
-          ? 'valid'
-          : 'empty',
-      talks:
-        cv.talks.length > 0
-          ? 'valid'
-          : 'empty',
-      volunteer: hasMeaningfulVolunteer(cv.volunteer)
-        ? 'valid'
-        : cv.volunteer.some((v) => v.organization || v.role)
-        ? 'incomplete'
-        : 'empty',
-      opensource:
-        cv.openSource.length > 0
-          ? 'valid'
-          : 'empty',
-      skills: cv.skills.length > 0 ? 'valid' : 'empty',
-      languages: cv.languages.length > 0 ? 'valid' : 'empty',
-    } as const;
-  }, [cv]);
-
   const handleCreateNew = () => {
     const newId = generateId();
     setCurrentCvId(newId);
     persistCurrentCvId(newId);
     setCv(createInitialCv());
-    setActiveSection('personal');
     setMode('editor');
-    setActiveWorkspaceView('sections');
     setShowValidationModal(false);
     setValidationErrors([]);
   };
@@ -408,8 +246,6 @@ export const App: React.FC = () => {
     const normalizedCv = normalizeCvData(record.cv) ?? createInitialCv();
     setCv(normalizedCv);
     setMode('editor');
-    setActiveSection('personal');
-    setActiveWorkspaceView('sections');
     setShowValidationModal(false);
     setValidationErrors([]);
     setCurrentCvId(id);
@@ -438,19 +274,8 @@ export const App: React.FC = () => {
     addToast(`Deleted "${name}".`, 'info');
   };
 
-  const handleAddSection = (sectionId: CvSectionKey) => {
-    if (sectionId === 'personal') return;
-    setCv((prev) => {
-      if (prev.sectionsOrder.includes(sectionId)) return prev;
-      return { ...prev, sectionsOrder: [...prev.sectionsOrder, sectionId] };
-    });
-    setActiveSection(sectionId);
-    setIsAddSectionMenuOpen(false);
-  };
-
   const handleRemoveSection = (sectionId: SectionId) => {
     if (sectionId === 'personal') return;
-    let nextActive: SectionId | null = null;
     setCv((prev) => {
       if (!prev.sectionsOrder.includes(sectionId)) return prev;
       const nextSectionsOrder = prev.sectionsOrder.filter(
@@ -461,54 +286,11 @@ export const App: React.FC = () => {
             (section) => `custom:${section.id}` !== sectionId,
           )
         : prev.customSections;
-
-      if (activeSection === sectionId) {
-        nextActive =
-          (nextSectionsOrder.find((id) => id !== 'personal') ??
-            nextSectionsOrder[0]) || 'personal';
-      }
-
       return {
         ...prev,
         customSections: nextCustomSections,
         sectionsOrder: nextSectionsOrder,
       };
-    });
-    if (nextActive) {
-      setActiveSection(nextActive);
-    }
-  };
-
-  const handleAddCustomSection = () => {
-    const id = crypto.randomUUID();
-    setCv((prev) => ({
-      ...prev,
-      customSections: [
-        ...prev.customSections,
-        { id, title: 'New section', body: '' },
-      ],
-      sectionsOrder: [...prev.sectionsOrder, `custom:${id}`],
-    }));
-    setActiveSection(`custom:${id}`);
-    setIsAddSectionMenuOpen(false);
-  };
-
-  const reorderSections = (sourceId: SectionId, targetId: SectionId) => {
-    if (sourceId === targetId) return;
-    if (sourceId === 'personal' || targetId === 'personal') return;
-    setCv((prev) => {
-      const order = [...prev.sectionsOrder];
-      const fromIndex = order.indexOf(sourceId);
-      const toIndex = order.indexOf(targetId);
-      if (fromIndex === -1 || toIndex === -1) return prev;
-      order.splice(fromIndex, 1);
-      order.splice(toIndex, 0, sourceId);
-      const personalIndex = order.indexOf('personal');
-      if (personalIndex > 0) {
-        order.splice(personalIndex, 1);
-        order.unshift('personal');
-      }
-      return { ...prev, sectionsOrder: order };
     });
   };
 
@@ -531,6 +313,53 @@ export const App: React.FC = () => {
     warnings.forEach((message) => addToast(message, 'info'));
 
     await downloadCvPdf(cv, getCvDisplayName(cv));
+  };
+
+  const photoUploadInputRef = useRef<HTMLInputElement>(null);
+  const triggerPhotoUpload = () => {
+    photoUploadInputRef.current?.click();
+  };
+
+  const onMoveSectionByDirection = (
+    sectionId: SectionId,
+    direction: -1 | 1,
+  ) => {
+    if (sectionId === 'personal') return;
+    setCv((prev) => {
+      const order = [...prev.sectionsOrder];
+      const fromIndex = order.indexOf(sectionId);
+      if (fromIndex === -1) return prev;
+      const toIndex = fromIndex + direction;
+      if (toIndex < 0 || toIndex >= order.length) return prev;
+      if (order[toIndex] === 'personal') return prev;
+      [order[fromIndex], order[toIndex]] = [order[toIndex], order[fromIndex]];
+      return { ...prev, sectionsOrder: order };
+    });
+  };
+
+  const onInsertSectionAt = (afterIndex: number, optionId: string) => {
+    if (optionId === 'custom') {
+      const id = crypto.randomUUID();
+      setCv((prev) => {
+        const order = [...prev.sectionsOrder];
+        order.splice(afterIndex + 1, 0, `custom:${id}` as SectionId);
+        return {
+          ...prev,
+          customSections: [
+            ...prev.customSections,
+            { id, title: 'New section', body: '' },
+          ],
+          sectionsOrder: order,
+        };
+      });
+      return;
+    }
+    setCv((prev) => {
+      if (prev.sectionsOrder.includes(optionId as SectionId)) return prev;
+      const order = [...prev.sectionsOrder];
+      order.splice(afterIndex + 1, 0, optionId as SectionId);
+      return { ...prev, sectionsOrder: order };
+    });
   };
 
   const handlePhotoUpload = (file: File) => {
@@ -887,496 +716,63 @@ export const App: React.FC = () => {
     );
   }
 
+  const editorBindings = {
+    onUpdate: (next: CvData) => setCv(next),
+    onUpdatePersonalInfo: (personalInfo: typeof cv.personalInfo) =>
+      setCv((prev) => ({ ...prev, personalInfo })),
+    onPhotoUploadRequest: triggerPhotoUpload,
+    addSectionOptions: addSectionOptions.map((option) => ({
+      id: option.id as string,
+      label: option.label,
+      disabled:
+        option.id !== 'custom' && cv.sectionsOrder.includes(option.id as SectionId),
+    })),
+    onInsertSectionAt,
+    onMoveSection: onMoveSectionByDirection,
+    onRemoveSection: handleRemoveSection,
+  };
+
   return (
     <>
       <PdfPayloadPortal payload={printablePayload} />
       <PdfPayloadPrintBlock payload={printablePayload} />
-      <div className="min-h-screen bg-slate-50">
+      <input
+        ref={photoUploadInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) handlePhotoUpload(file);
+          event.target.value = '';
+        }}
+      />
+      <div className="min-h-screen bg-canvas">
         {header}
-      <main className="mx-auto max-w-6xl px-4 pt-20 pb-8 print:block print:max-w-none print:px-0 print:pt-0 print:pb-0">
-        <div className="mb-4 flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 p-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 shadow-sm print:hidden">
-          <button
-            type="button"
-            onClick={() => setActiveWorkspaceView('sections')}
-            className={`flex-1 rounded-full px-4 py-2 transition ${
-              activeWorkspaceView === 'sections'
-                ? 'bg-slate-900 text-white'
-                : 'bg-transparent text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            CV Builder
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveWorkspaceView('preview')}
-            className={`flex-1 rounded-full px-4 py-2 transition ${
-              activeWorkspaceView === 'preview'
-                ? 'bg-slate-900 text-white'
-                : 'bg-transparent text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            Live preview
-          </button>
+      <main className="mx-auto max-w-[900px] px-4 pt-24 pb-16 print:block print:max-w-none print:px-0 print:pt-0 print:pb-0">
+        {/* The CV preview IS the editor. Inline + popover editing. */}
+        <div className="rounded-3xl bg-paper shadow-lift print:hidden">
+          <div className="px-8 py-6">
+            <CvPreview
+              cv={cv}
+              fontSettings={fontSettings}
+              advancedSettings={advancedSettings}
+              editor={editorBindings}
+            />
+          </div>
         </div>
 
-        {activeWorkspaceView === 'sections' && (
-          <div className="flex gap-4 print:hidden">
-            {/* Sidebar */}
-            <aside className="w-56 shrink-0 space-y-4 pt-4 print:hidden">
-              <div>
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
-                  Sections
-                </h2>
-                <nav className="space-y-1">
-                  {cv.sectionsOrder.map((id, index) => {
-                    const rawLabel = isCustomSectionId(id)
-                      ? cv.customSections.find(
-                          (section) => `custom:${section.id}` === id,
-                        )?.title || 'Custom section'
-                      : sectionLabel[id as CvSectionKey];
-                    const label =
-                      rawLabel.length > 16 ? rawLabel.slice(0, 16) : rawLabel;
-
-                    let status: 'valid' | 'incomplete' | 'empty' = 'empty';
-                    if (isCustomSectionId(id)) {
-                      const custom = cv.customSections.find(
-                        (section) => `custom:${section.id}` === id,
-                      );
-                      status = custom && custom.body.trim() ? 'valid' : 'empty';
-                    } else {
-                      status = sectionStatuses[id as CvSectionKey];
-                    }
-
-                    const color =
-                      status === 'valid'
-                        ? 'bg-emerald-500'
-                        : status === 'incomplete'
-                        ? 'bg-amber-400'
-                        : 'bg-slate-300';
-                    const isPersonal = id === 'personal';
-                    const isFirst = index === 0;
-                    const isLast = index === cv.sectionsOrder.length - 1;
-                    const previousId =
-                      index > 0 ? (cv.sectionsOrder[index - 1] as SectionId) : null;
-                    const isImmediatelyAfterPersonal = previousId === 'personal';
-                    const canMoveUp =
-                      !isPersonal && !isFirst && !isImmediatelyAfterPersonal;
-                    const canMoveDown = !isPersonal && !isLast;
-                    const moveUpTargetId = canMoveUp ? previousId : null;
-                    const moveDownTargetId = canMoveDown
-                      ? (cv.sectionsOrder[index + 1] as SectionId)
-                      : null;
-
-                    return (
-                      <div
-                        key={id}
-                        className={`flex w-full items-center gap-1.5 rounded-md ${
-                          draggingSectionId === id ? 'opacity-60' : ''
-                        }`}
-                        draggable={!isPersonal}
-                        onDragStart={(event) => {
-                          if (isPersonal) return;
-                          event.dataTransfer.effectAllowed = 'move';
-                          setDraggingSectionId(id);
-                        }}
-                        onDragEnd={() => setDraggingSectionId(null)}
-                        onDragOver={(event) => {
-                          if (
-                            !draggingSectionId ||
-                            draggingSectionId === id ||
-                            id === 'personal' ||
-                            draggingSectionId === 'personal'
-                          )
-                            return;
-                          event.preventDefault();
-                          event.dataTransfer.dropEffect = 'move';
-                        }}
-                        onDrop={(event) => {
-                          event.preventDefault();
-                          if (
-                            !draggingSectionId ||
-                            draggingSectionId === id ||
-                            id === 'personal' ||
-                            draggingSectionId === 'personal'
-                          )
-                            return;
-                          reorderSections(draggingSectionId, id);
-                          setDraggingSectionId(null);
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => setActiveSection(id)}
-                          className={`flex flex-1 items-center justify-between rounded-md px-3 py-2 text-sm ${
-                            activeSection === id
-                              ? 'bg-slate-900 text-white'
-                              : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                          }`}
-                        >
-                          <span className="truncate">{label}</span>
-                          <span className="flex items-center gap-1 text-xs">
-                            <span
-                              className={`h-2 w-2 rounded-full ${color}`}
-                              aria-hidden
-                            />
-                          </span>
-                        </button>
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            className={sectionsSidebarArrowButton}
-                            onClick={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              if (!moveUpTargetId) return;
-                              reorderSections(id, moveUpTargetId);
-                            }}
-                            disabled={isFirst || isPersonal}
-                            aria-label="Move section up"
-                            title="Move section up"
-                          >
-                            <ChevronUpIcon className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            className={sectionsSidebarArrowButton}
-                            onClick={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              if (!moveDownTargetId) return;
-                              reorderSections(id, moveDownTargetId);
-                            }}
-                            disabled={isLast || isPersonal}
-                            aria-label="Move section down"
-                            title="Move section down"
-                          >
-                            <ChevronDownIcon className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            className={`${sectionsSidebarArrowButton} ${
-                              isPersonal ? '' : 'text-slate-700 hover:text-rose-700'
-                            }`}
-                            onClick={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              handleRemoveSection(id);
-                            }}
-                            disabled={isPersonal}
-                            aria-label="Remove section"
-                            title="Remove section"
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </nav>
-                <div className="relative mt-3" ref={addSectionMenuRef}>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setIsAddSectionMenuOpen((previous) => !previous)
-                    }
-                    className="inline-flex w-full items-center justify-between gap-2 rounded-md border border-dashed border-slate-300 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
-                  >
-                    <span>+ Add section</span>
-                    <ChevronDownIcon
-                      className={`h-4 w-4 transition ${isAddSectionMenuOpen ? 'rotate-180' : ''}`}
-                    />
-                  </button>
-                  {isAddSectionMenuOpen && (
-                    <div className="absolute z-20 mt-2 w-56 rounded-md border border-slate-200 bg-white shadow-lg">
-                      <div className="border-b border-slate-100 px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                          Choose a section
-                        </p>
-                      </div>
-                      <div className="p-1">
-                        {addSectionOptions.map((option) => {
-                          const alreadyAdded =
-                            option.id !== 'custom' &&
-                            cv.sectionsOrder.includes(option.id);
-                          return (
-                            <button
-                              key={option.id}
-                              type="button"
-                              onClick={() => {
-                                if (option.id === 'custom') {
-                                  handleAddCustomSection();
-                                  return;
-                                }
-                                handleAddSection(option.id);
-                              }}
-                              className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-[11px] font-medium transition ${
-                                alreadyAdded
-                                  ? 'bg-slate-50 text-slate-500'
-                                  : 'hover:bg-slate-50 text-slate-700'
-                              }`}
-                            >
-                              <span>{option.label}</span>
-                              {alreadyAdded && (
-                                <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
-                                  Added
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </aside>
-
-            {/* Form panel */}
-            <section className="flex flex-1 pt-4">
-              <div className="flex-1 space-y-4 print:hidden">
-            {activeSection === 'personal' && (
-              <PersonalInfoForm
-                personalInfo={cv.personalInfo}
-                onChange={(personalInfo) =>
-                  setCv((prev) => ({ ...prev, personalInfo }))
-                }
-                onPhotoUpload={handlePhotoUpload}
-              />
-            )}
-            {activeSection === 'experience' && (
-              <ExperienceForm
-                entries={cv.experience}
-                onChange={(experience) => setCv((prev) => ({ ...prev, experience }))}
-                createEmptyExperience={createEmptyExperience}
-              />
-            )}
-            {activeSection === 'volunteer' && (
-              <VolunteerForm
-                entries={cv.volunteer}
-                onChange={(volunteer) =>
-                  setCv((prev) => ({ ...prev, volunteer }))
-                }
-              />
-            )}
-            {activeSection === 'projects' && (
-              <ProjectsForm
-                entries={cv.projects}
-                onChange={(projects) => setCv((prev) => ({ ...prev, projects }))}
-                createEmptyProject={createEmptyProject}
-              />
-            )}
-            {activeSection === 'achievements' && (
-              <AchievementsForm
-                entries={cv.achievements}
-                onChange={(achievements) =>
-                  setCv((prev) => ({ ...prev, achievements }))
-                }
-                createEmptyAchievement={createEmptyAchievement}
-              />
-            )}
-            {activeSection === 'publications' && (
-              <PublicationsForm
-                entries={cv.publications}
-                onChange={(publications) =>
-                  setCv((prev) => ({ ...prev, publications }))
-                }
-              />
-            )}
-            {activeSection === 'talks' && (
-              <TalksForm
-                entries={cv.talks}
-                onChange={(talks) => setCv((prev) => ({ ...prev, talks }))}
-              />
-            )}
-            {activeSection === 'opensource' && (
-              <OpenSourceForm
-                entries={cv.openSource}
-                onChange={(openSource) =>
-                  setCv((prev) => ({ ...prev, openSource }))
-                }
-              />
-            )}
-            {activeSection === 'education' && (
-              <EducationForm
-                entries={cv.education}
-                onChange={(education) => setCv((prev) => ({ ...prev, education }))}
-                createEmptyEducation={createEmptyEducation}
-              />
-            )}
-            {activeSection === 'skills' && (
-              <SkillsForm
-                skills={cv.skills}
-                onChange={(skills) => setCv((prev) => ({ ...prev, skills }))}
-              />
-            )}
-            {activeSection === 'languages' && (
-              <LanguagesForm
-                languages={cv.languages}
-                onChange={(languages) =>
-                  setCv((prev) => ({ ...prev, languages }))
-                }
-              />
-            )}
-            {activeSection.startsWith('custom:') && (
-              <CustomSectionForm
-                section={
-                  cv.customSections.find(
-                    (section) => `custom:${section.id}` === activeSection,
-                  ) ?? {
-                    id: '',
-                    title: '',
-                    body: '',
-                  }
-                }
-                onChange={(updated) =>
-                  setCv((prev) => ({
-                    ...prev,
-                    customSections: prev.customSections.map((section) =>
-                      section.id === updated.id ? updated : section,
-                    ),
-                  }))
-                }
-                onDelete={() => handleRemoveSection(activeSection)}
-              />
-            )}
-          </div>
-        </section>
-        </div>
-        )}
-
-        {/* Live preview */}
-        {activeWorkspaceView === 'preview' && (
-          <div className="mt-4 mx-auto max-w-4xl print:hidden">
-            <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <button
-                  type="button"
-                  className="flex items-start gap-2 text-left"
-                  aria-expanded={isAdvancedOptionsOpen}
-                  aria-controls="advanced-options-panel"
-                  onClick={() =>
-                    setIsAdvancedOptionsOpen((prevIsOpen) => !prevIsOpen)
-                  }
-                >
-                  {isAdvancedOptionsOpen ? (
-                    <ChevronUpIcon className="h-4 w-4 text-slate-500" />
-                  ) : (
-                    <ChevronDownIcon className="h-4 w-4 text-slate-500" />
-                  )}
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Advanced options
-                    </p>
-                    <p className="text-[11px] text-slate-500">
-                      Fine-tune typography for the exported PDF.
-                    </p>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  className="text-[11px] font-medium text-blue-600 hover:text-blue-700"
-                  onClick={() =>
-                    setCv((prev) => ({
-                      ...prev,
-                      fontSettings: { ...DEFAULT_FONT_SETTINGS },
-                    }))
-                  }
-                >
-                  Reset defaults
-                </button>
-              </div>
-              {isAdvancedOptionsOpen && (
-                <div className="space-y-4" id="advanced-options-panel">
-                  {fontControlSections.map((group) => (
-                    <div key={group.id} className="space-y-2">
-                      <p className="text-[11px] font-semibold text-slate-700">
-                        {group.title}
-                      </p>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        {group.controls.map((control) => (
-                          <div key={control.key}>
-                            <label className="block text-[11px] font-semibold text-slate-700">
-                              {control.label}
-                            </label>
-                            <p className="text-[10px] text-slate-500">
-                              {control.helper}
-                            </p>
-                            <div className="mt-1 flex items-center gap-2">
-                              <button
-                                type="button"
-                                className="rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                                onClick={() =>
-                                  adjustFontSetting(
-                                    control.key,
-                                    -(control.step ?? 1),
-                                  )
-                                }
-                              >
-                                -
-                              </button>
-                              <input
-                                type="number"
-                                min={0}
-                                step={control.step ?? 1}
-                                className="w-full rounded-md border border-slate-300 px-2 py-1 text-[11px] text-slate-700"
-                                value={fontSettings[control.key]}
-                                onChange={(event) =>
-                                  handleFontSettingChange(
-                                    control.key,
-                                    Number(event.target.value),
-                                  )
-                                }
-                              />
-                              <span className="text-[10px] text-slate-500">
-                                px
-                              </span>
-                              <button
-                                type="button"
-                                className="rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                                onClick={() =>
-                                  adjustFontSetting(
-                                    control.key,
-                                    control.step ?? 1,
-                                  )
-                                }
-                              >
-                                +
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-        <div
-          className={`mt-4 ${
-            activeWorkspaceView === 'preview' ? 'block' : 'hidden'
-          } ${
-            pendingPrintJob ? 'print:hidden' : 'print:block print:mt-0'
-          }`}
-        >
-          <div className="mx-auto max-w-4xl">
-            <div className="sticky top-20 print:static print:top-auto">
-              <div className="mb-2 flex items-baseline justify-between print:hidden">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Live preview
-                </h2>
-                <p className="text-[11px] text-slate-400">
-                  This layout is used for PDF export.
-                </p>
-              </div>
-              <div className="bg-slate-200 py-4 px-2 print:bg-transparent print:p-0">
-                <div className={PREVIEW_SURFACE_CLASSNAMES}>
-                  <CvPreview cv={cv} fontSettings={fontSettings} />
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="print:hidden">
+          <AdvancedPanel
+            fontSettings={fontSettings}
+            advancedSettings={advancedSettings}
+            onChangeFont={(next) =>
+              setCv((prev) => ({ ...prev, fontSettings: next }))
+            }
+            onChangeAdvanced={(next) =>
+              setCv((prev) => ({ ...prev, advancedSettings: next }))
+            }
+          />
         </div>
 
         {pendingPrintJob && (
@@ -1387,6 +783,10 @@ export const App: React.FC = () => {
                   <CvPreview
                     cv={pendingPrintJob.cv}
                     fontSettings={pendingPrintJob.cv.fontSettings}
+                    advancedSettings={
+                      pendingPrintJob.cv.advancedSettings ??
+                      DEFAULT_ADVANCED_SETTINGS
+                    }
                     forcePrintLayout
                   />
                 </div>
@@ -1421,20 +821,10 @@ export const App: React.FC = () => {
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
-                  className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  className="rounded-md bg-ink px-3 py-1.5 text-sm font-semibold text-paper hover:bg-accent-dark"
                   onClick={() => setShowValidationModal(false)}
                 >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700"
-                  onClick={() => {
-                    setActiveSection('personal');
-                    setShowValidationModal(false);
-                  }}
-                >
-                  Go to Personal Info
+                  OK
                 </button>
               </div>
             </div>

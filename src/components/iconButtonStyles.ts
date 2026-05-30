@@ -6,6 +6,3 @@ export const sectionEntryIconButtonNeutral =
 
 export const sectionEntryIconButtonDanger =
   `${sectionEntryIconButtonBase} text-slate-700 hover:text-rose-700`;
-
-export const sectionsSidebarArrowButton =
-  'inline-flex items-center justify-center text-[11px] text-slate-600 hover:text-slate-900 disabled:text-slate-300 disabled:cursor-default';

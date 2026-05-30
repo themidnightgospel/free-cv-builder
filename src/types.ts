@@ -22,6 +22,16 @@ export interface FontSettings {
   sectionDetail: number;
 }
 
+export interface AdvancedSettings {
+  sectionGapPx: number;
+  lineHeight: number;
+  accentColor: string;
+  showSectionDividers: boolean;
+  pagePaddingXPx: number;
+  pagePaddingYPx: number;
+  paragraphSpacingPx: number;
+}
+
 export interface PersonalInfo {
   fullName: string;
   jobTitle: string;
@@ -149,4 +159,5 @@ export interface CvData {
    */
   sectionsOrder: SectionId[];
   fontSettings: FontSettings;
+  advancedSettings: AdvancedSettings;
 }

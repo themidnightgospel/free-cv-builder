@@ -11,6 +11,24 @@ export const base64ToUint8 = (base64: string): Uint8Array => {
 };
 
 export const loadPdfJs = async () => {
+  // In Node (tests/SSR), use the legacy build with a file-URL worker source.
+  if (typeof window === 'undefined') {
+    const pdfjs: any = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    try {
+      const { createRequire } = await import('node:module');
+      const { pathToFileURL } = await import('node:url');
+      const require = createRequire(import.meta.url);
+      const workerPath = require.resolve(
+        'pdfjs-dist/legacy/build/pdf.worker.mjs',
+      );
+      if (pdfjs.GlobalWorkerOptions) {
+        pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).href;
+      }
+    } catch (error) {
+      console.warn('Failed to configure pdf.js node worker', error);
+    }
+    return pdfjs;
+  }
   const pdfjs: any = await import('pdfjs-dist');
   try {
     const workerSrc = new URL(

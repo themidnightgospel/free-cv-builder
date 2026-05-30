@@ -203,6 +203,7 @@ const buildCompactCvPayload = (cv: CvData) => ({
   customSections: compactArray(cv.customSections, compactCustomSection),
   sectionsOrder: cv.sectionsOrder ?? [],
   fontSettings: cv.fontSettings,
+  advancedSettings: cv.advancedSettings,
 });
 
 export const encodeCvPayloadForText = (data: CvData): string => {

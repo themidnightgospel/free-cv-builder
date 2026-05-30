@@ -48,8 +48,38 @@
   --font-section-title: 0.75rem;
   --font-section-item-title: 0.875rem;
   --font-section-detail: 0.75rem;
+  --cv-section-gap: 1rem;
+  --cv-paragraph-spacing: 0.25rem;
+  --cv-line-height: 1.5;
+  --cv-accent: #2563eb;
+  --cv-page-padding-x: 0px;
+  --cv-page-padding-y: 0px;
   font-family: 'Source Sans 3', system-ui, -apple-system, sans-serif;
   font-feature-settings: 'kern' 1, 'liga' 1;
+  line-height: var(--cv-line-height);
+  padding-left: var(--cv-page-padding-x);
+  padding-right: var(--cv-page-padding-x);
+  padding-top: var(--cv-page-padding-y);
+  padding-bottom: var(--cv-page-padding-y);
+}
+
+.cv-preview-content a,
+.cv-preview-content .text-blue-600 {
+  color: var(--cv-accent) !important;
+}
+
+.cv-preview-content--dividers section,
+.cv-preview-content--dividers > div > section {
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: var(--cv-section-gap);
+}
+
+.cv-preview-content--dividers section:last-of-type {
+  border-bottom: 0;
+}
+
+.cv-markdown p + p {
+  margin-top: var(--cv-paragraph-spacing, 0.25rem);
 }
 
 .cv-preview-content h1 {
@@ -86,9 +116,6 @@
   margin: 0;
 }
 
-.cv-markdown p + p {
-  margin-top: 0.5rem;
-}
 
 .cv-markdown ul,
 .cv-markdown ol {

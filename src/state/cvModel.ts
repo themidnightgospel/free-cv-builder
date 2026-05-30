@@ -1,5 +1,6 @@
 import type {
   AchievementEntry,
+  AdvancedSettings,
   CvData,
   CvSectionKey,
   CustomSection,
@@ -83,6 +84,16 @@ export const DEFAULT_FONT_SETTINGS: FontSettings = {
   sectionDetail: 12,
 };
 
+export const DEFAULT_ADVANCED_SETTINGS: AdvancedSettings = {
+  sectionGapPx: 16,
+  lineHeight: 1.5,
+  accentColor: '#2563eb',
+  showSectionDividers: false,
+  pagePaddingXPx: 32,
+  pagePaddingYPx: 24,
+  paragraphSpacingPx: 4,
+};
+
 export const createInitialCv = (): CvData => ({
   personalInfo: createEmptyPersonalInfo(),
   experience: [createEmptyExperience()],
@@ -105,6 +116,7 @@ export const createInitialCv = (): CvData => ({
     'education',
   ],
   fontSettings: { ...DEFAULT_FONT_SETTINGS },
+  advancedSettings: { ...DEFAULT_ADVANCED_SETTINGS },
 });
 
 export const sectionLabel: Record<CvSectionKey, string> = {
@@ -150,6 +162,57 @@ export const normalizeSectionsOrder = (
 const normalizeFontValue = (value: unknown, fallback: number) => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
   return Math.max(0, value);
+};
+
+const normalizePositiveNumber = (value: unknown, fallback: number) => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.max(0, value);
+};
+
+const normalizeBoolean = (value: unknown, fallback: boolean) => {
+  if (typeof value === 'boolean') return value;
+  return fallback;
+};
+
+const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+const normalizeHexColor = (value: unknown, fallback: string) => {
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim();
+  return HEX_COLOR_RE.test(trimmed) ? trimmed : fallback;
+};
+
+export const normalizeAdvancedSettings = (value: unknown): AdvancedSettings => {
+  const record = isRecord(value) ? (value as Partial<AdvancedSettings>) : {};
+  return {
+    sectionGapPx: normalizePositiveNumber(
+      record.sectionGapPx,
+      DEFAULT_ADVANCED_SETTINGS.sectionGapPx,
+    ),
+    lineHeight:
+      typeof record.lineHeight === 'number' && record.lineHeight > 0
+        ? record.lineHeight
+        : DEFAULT_ADVANCED_SETTINGS.lineHeight,
+    accentColor: normalizeHexColor(
+      record.accentColor,
+      DEFAULT_ADVANCED_SETTINGS.accentColor,
+    ),
+    showSectionDividers: normalizeBoolean(
+      record.showSectionDividers,
+      DEFAULT_ADVANCED_SETTINGS.showSectionDividers,
+    ),
+    pagePaddingXPx: normalizePositiveNumber(
+      record.pagePaddingXPx,
+      DEFAULT_ADVANCED_SETTINGS.pagePaddingXPx,
+    ),
+    pagePaddingYPx: normalizePositiveNumber(
+      record.pagePaddingYPx,
+      DEFAULT_ADVANCED_SETTINGS.pagePaddingYPx,
+    ),
+    paragraphSpacingPx: normalizePositiveNumber(
+      record.paragraphSpacingPx,
+      DEFAULT_ADVANCED_SETTINGS.paragraphSpacingPx,
+    ),
+  };
 };
 
 export const normalizeFontSettings = (value: unknown): FontSettings => {
@@ -479,6 +542,7 @@ export const normalizeCvData = (value: unknown): CvData | null => {
       baseSectionsOrder,
     ),
     fontSettings: normalizeFontSettings(candidate.fontSettings),
+    advancedSettings: normalizeAdvancedSettings(candidate.advancedSettings),
   };
 };
 
