@@ -89,8 +89,8 @@ export const DEFAULT_ADVANCED_SETTINGS: AdvancedSettings = {
   lineHeight: 1.5,
   accentColor: '#2563eb',
   showSectionDividers: false,
-  pagePaddingXPx: 32,
-  pagePaddingYPx: 24,
+  pagePaddingXPx: 16,
+  pagePaddingYPx: 12,
   paragraphSpacingPx: 4,
 };
 

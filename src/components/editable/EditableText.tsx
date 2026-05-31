@@ -164,13 +164,13 @@ export const EditableText: React.FC<EditableTextProps> = ({
       onKeyDown={handleKeyboardStart}
       title={displayError ?? undefined}
       aria-invalid={Boolean(displayError)}
-      className={`group/edit ${className} ${frameClass} ${valueClass} ${errorClass} inline-flex items-center gap-1`}
+      className={`group/edit ${className} ${frameClass} ${valueClass} ${errorClass}`}
       aria-label={ariaLabel}
     >
-      <span>{displayValue}</span>
+      {displayValue}
       <PencilSquareIcon
         aria-hidden
-        className="h-4 w-4 shrink-0 text-accent opacity-0 transition group-hover/edit:opacity-100"
+        className="ml-1 inline-block h-4 w-4 align-text-bottom text-accent opacity-0 transition group-hover/edit:opacity-100"
       />
     </span>
   );

@@ -180,49 +180,87 @@ interface EntryBlock {
   preDate: string[];
   date: string | null;
   description: string[];
+  descriptionStart?: number;
 }
 
+const HEADER_LINE_LIMIT = 160;
+
+const looksLikeHeaderCandidate = (line: string): boolean => {
+  if (!line) return false;
+  if (line.length > HEADER_LINE_LIMIT) return false;
+  if (line.startsWith('-') || line.startsWith('•')) return false;
+  // Lines that obviously belong to the description rather than the next header.
+  const lower = line.toLowerCase();
+  if (lower.startsWith('technologies:')) return false;
+  if (lower.startsWith('tech stack:')) return false;
+  if (lower.startsWith('key contributions:')) return false;
+  if (lower.startsWith('responsibilities:')) return false;
+  if (lower.startsWith('achievements:')) return false;
+  if (lower.startsWith('co-authors:')) return false;
+  return true;
+};
+
 const groupEntriesByDate = (lines: string[]): EntryBlock[] => {
+  // Find every line that looks like a date range. Each one anchors an entry.
+  const dateIndices: number[] = [];
+  lines.forEach((line, index) => {
+    if (isDateRange(line)) dateIndices.push(index);
+  });
+  if (dateIndices.length === 0) return [];
+
+  const headerWindow = (
+    entryIndex: number,
+    dateIdx: number,
+  ): { headerStart: number; descStart: number } => {
+    const previousBoundary =
+      entryIndex === 0 ? 0 : dateIndices[entryIndex - 1] + 1;
+    // Look at up to 2 lines immediately before the date.
+    let headerStart = dateIdx;
+    for (let offset = 1; offset <= 2; offset += 1) {
+      const candidateIdx = dateIdx - offset;
+      if (candidateIdx < previousBoundary) break;
+      const candidate = lines[candidateIdx];
+      if (!looksLikeHeaderCandidate(candidate)) break;
+      headerStart = candidateIdx;
+    }
+    return { headerStart, descStart: previousBoundary };
+  };
+
   const blocks: EntryBlock[] = [];
-  let current: EntryBlock | null = null;
-  let pre: string[] = [];
-  for (const line of lines) {
-    if (isDateRange(line)) {
-      current = { preDate: pre, date: line, description: [] };
-      blocks.push(current);
-      pre = [];
-      continue;
+  for (let i = 0; i < dateIndices.length; i += 1) {
+    const dateIdx = dateIndices[i];
+    const { headerStart, descStart } = headerWindow(i, dateIdx);
+    const preDate = lines.slice(headerStart, dateIdx);
+    // Description of the previous block ends right before the current header starts.
+    if (blocks.length > 0) {
+      const previousBlock = blocks[blocks.length - 1];
+      previousBlock.description = lines.slice(
+        previousBlock.descriptionStart ?? 0,
+        headerStart,
+      );
     }
-    if (current) {
-      // Heuristic: a new entry starts when we have a "title" line (no period, short) followed
-      // by a bullet line. Easier: split when a line matches a date later — but we already split on date.
-      // So just stash into description. New entry starts when a future date appears.
-      current.description.push(line);
-    } else {
-      pre.push(line);
+    // Lines between the previous entry boundary and this header that don't belong to a description
+    // anywhere stay attached to this block's header (e.g. orphan title lines for the first block).
+    if (blocks.length === 0 && descStart < headerStart) {
+      const leadingHeader = lines.slice(descStart, headerStart);
+      // Keep only header-looking trailing lines so noise doesn't leak in.
+      const cleaned: string[] = [];
+      for (const line of leadingHeader) {
+        if (looksLikeHeaderCandidate(line)) cleaned.push(line);
+        else cleaned.length = 0;
+      }
+      preDate.unshift(...cleaned);
     }
+    blocks.push({
+      preDate,
+      date: lines[dateIdx],
+      description: [],
+      descriptionStart: dateIdx + 1,
+    });
   }
-  // Detect entries that didn't have a date by recognizing 2-3 line headers before each date block:
-  // The first block's preDate is its header (preceding lines). Subsequent blocks' headers come from
-  // tail of previous block's description.
-  // Reshuffle: a typical header is up to 3 lines preceding a date.
-  for (let i = 1; i < blocks.length; i += 1) {
-    const previous = blocks[i - 1];
-    const next = blocks[i];
-    // pop up to 3 trailing description lines that look like header (jobTitle, company • location)
-    const headerCandidate: string[] = [];
-    while (previous.description.length > 0 && headerCandidate.length < 3) {
-      const candidate = previous.description[previous.description.length - 1];
-      const looksLikeHeader =
-        candidate.length < 120 &&
-        !candidate.endsWith('.') &&
-        !candidate.startsWith('-') &&
-        !candidate.startsWith('•');
-      if (!looksLikeHeader) break;
-      headerCandidate.unshift(previous.description.pop() as string);
-    }
-    next.preDate = [...headerCandidate, ...next.preDate];
-  }
+  // Close the description for the final block.
+  const last = blocks[blocks.length - 1];
+  last.description = lines.slice(last.descriptionStart ?? 0);
   return blocks;
 };
 

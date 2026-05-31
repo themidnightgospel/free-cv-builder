@@ -401,12 +401,75 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
   const [displayPageHeight, setDisplayPageHeight] = useState(
     PRINT_PAGE_HEIGHT,
   );
-  const [displayContentHeight, setDisplayContentHeight] = useState(0);
+  const [pageStarts, setPageStarts] = useState<number[]>([0]);
   const [isPrinting, setIsPrinting] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const pageIndexRef = useRef(0);
   const pendingPrintPageRef = useRef<number | null>(null);
+
+  const recomputeLayout = React.useCallback(() => {
+    const viewport = viewportRef.current;
+    const content = contentRef.current;
+    if (!viewport || !content) return;
+    const width =
+      viewport.clientWidth || content.clientWidth || PRINT_PAGE_WIDTH;
+    const pageHeight = (width / PRINT_PAGE_WIDTH) * PRINT_PAGE_HEIGHT;
+    setDisplayWidth(width);
+    setDisplayPageHeight(pageHeight);
+    const sections = Array.from(
+      content.querySelectorAll<HTMLElement>('section'),
+    );
+    if (sections.length === 0) {
+      setPageStarts([0]);
+      return;
+    }
+    const contentRect = content.getBoundingClientRect();
+
+    // Build a flat list of "atomic blocks" we are willing to break before.
+    // A block is either a section heading + its first entry (tied together) or an individual entry.
+    type Block = { top: number; bottom: number };
+    const blocks: Block[] = [];
+    for (const section of sections) {
+      const heading = section.querySelector<HTMLElement>(':scope > h2');
+      const entries = Array.from(
+        section.querySelectorAll<HTMLElement>(':scope > div > div'),
+      );
+      if (entries.length === 0) {
+        const r = section.getBoundingClientRect();
+        blocks.push({
+          top: r.top - contentRect.top,
+          bottom: r.bottom - contentRect.top,
+        });
+        continue;
+      }
+      entries.forEach((entry, index) => {
+        const entryRect = entry.getBoundingClientRect();
+        // The first entry must stay with the section heading.
+        const topElement = index === 0 && heading ? heading : entry;
+        const topRect = topElement.getBoundingClientRect();
+        blocks.push({
+          top: topRect.top - contentRect.top,
+          bottom: entryRect.bottom - contentRect.top,
+        });
+      });
+    }
+
+    const starts = [0];
+    let currentStart = 0;
+    for (const block of blocks) {
+      const blockFits = block.bottom - block.top <= PRINT_PAGE_HEIGHT;
+      if (
+        block.bottom > currentStart + PRINT_PAGE_HEIGHT &&
+        block.top > currentStart &&
+        blockFits
+      ) {
+        currentStart = block.top;
+        starts.push(block.top);
+      }
+    }
+    setPageStarts(starts);
+  }, []);
 
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
@@ -414,20 +477,11 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
     const content = contentRef.current;
     if (!viewport || !content) return;
 
-    const updateHeights = () => {
-      const width =
-        viewport.clientWidth || content.clientWidth || PRINT_PAGE_WIDTH;
-      const pageHeight = (width / PRINT_PAGE_WIDTH) * PRINT_PAGE_HEIGHT;
-      setDisplayWidth(width);
-      setDisplayPageHeight(pageHeight);
-      setDisplayContentHeight(content.scrollHeight);
-    };
-
-    updateHeights();
+    recomputeLayout();
 
     if ('ResizeObserver' in window) {
-      const viewportObserver = new ResizeObserver(updateHeights);
-      const contentObserver = new ResizeObserver(updateHeights);
+      const viewportObserver = new ResizeObserver(recomputeLayout);
+      const contentObserver = new ResizeObserver(recomputeLayout);
       viewportObserver.observe(viewport);
       contentObserver.observe(content);
       return () => {
@@ -437,37 +491,24 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
     }
 
     return;
-  }, []);
+  }, [recomputeLayout]);
 
   useEffect(() => {
-    const viewport = viewportRef.current;
-    const content = contentRef.current;
-    if (!viewport || !content) return;
-    const width =
-      viewport.clientWidth || content.clientWidth || PRINT_PAGE_WIDTH;
-    const pageHeight = (width / PRINT_PAGE_WIDTH) * PRINT_PAGE_HEIGHT;
-    setDisplayWidth(width);
-    setDisplayPageHeight(pageHeight);
-    setDisplayContentHeight(content.scrollHeight);
-  }, [cv]);
+    recomputeLayout();
+  }, [cv, recomputeLayout]);
 
   const widthRatio = displayWidth / PRINT_PAGE_WIDTH || 1;
-  // Content renders at native PRINT_PAGE_WIDTH then is scaled — so scrollHeight is already in print coordinates.
-  const printContentHeight = displayContentHeight;
   useEffect(() => {
     pageIndexRef.current = pageIndex;
   }, [pageIndex]);
 
   useEffect(() => {
-    const totalPages =
-      PRINT_PAGE_HEIGHT > 0
-        ? Math.max(1, Math.ceil(printContentHeight / PRINT_PAGE_HEIGHT))
-        : 1;
+    const totalPagesNow = Math.max(pageStarts.length, 1);
     setPageIndex((prev) => {
-      const maxIndex = Math.max(totalPages - 1, 0);
+      const maxIndex = Math.max(totalPagesNow - 1, 0);
       return prev > maxIndex ? maxIndex : prev;
     });
-  }, [printContentHeight]);
+  }, [pageStarts]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -512,13 +553,13 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
     };
   }, []);
 
-  const totalPages =
-    PRINT_PAGE_HEIGHT > 0
-      ? Math.max(1, Math.ceil(printContentHeight / PRINT_PAGE_HEIGHT))
-      : 1;
+  const totalPages = Math.max(pageStarts.length, 1);
   const printMode = forcePrintLayout || isPrinting;
-  // Translate in content (print) coordinates — scale applies on top so the visual shift = pageShift * widthRatio.
-  const pageShiftInPrintCoords = printMode ? 0 : pageIndex * PRINT_PAGE_HEIGHT;
+  // Snap to the top of the section that opens each page so lines never get clipped mid-glyph.
+  const safePageIndex = Math.min(pageIndex, pageStarts.length - 1);
+  const pageShiftInPrintCoords = printMode
+    ? 0
+    : pageStarts[safePageIndex] ?? 0;
   const pxToRem = (value: number) => `${Math.max(0, value) / 16}rem`;
   const fontVariableStyles = {
     '--font-full-name': pxToRem(fontSettings.fullName),
@@ -538,13 +579,14 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
   const contentStyles: React.CSSProperties = {
     // Always render at native A4 print width so text wraps the same as the PDF.
     width: `${PRINT_PAGE_WIDTH}px`,
-    height: printMode || isEditor ? 'auto' : undefined,
+    height: printMode ? 'auto' : undefined,
     ...fontVariableStyles,
   };
 
-  if (!printMode && !isEditor) {
+  if (!printMode) {
+    const scale = isEditor ? 1 : widthRatio;
     contentStyles.transformOrigin = 'top left';
-    contentStyles.transform = `scale(${widthRatio}) translateY(-${pageShiftInPrintCoords}px)`;
+    contentStyles.transform = `scale(${scale}) translateY(-${pageShiftInPrintCoords}px)`;
   }
 
   return (
@@ -553,11 +595,12 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
         ref={viewportRef}
         className="flex-1 overflow-hidden print:h-auto print:overflow-visible"
         style={{
-          height:
-            printMode || isEditor
-              ? 'auto'
+          height: printMode
+            ? 'auto'
+            : isEditor
+              ? PRINT_PAGE_HEIGHT
               : displayPageHeight || PRINT_PAGE_HEIGHT,
-          overflow: printMode || isEditor ? 'visible' : undefined,
+          overflow: printMode ? 'visible' : 'hidden',
         }}
       >
         <div

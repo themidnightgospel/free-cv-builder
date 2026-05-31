@@ -5,7 +5,7 @@
 @media print {
   @page {
     size: A4;
-    margin: 15px 0 0 0;
+    margin: 0;
     @top-left {
       content: none;
     }
@@ -38,6 +38,17 @@
   .cv-preview-content {
     transform: none !important;
     height: auto !important;
+  }
+
+  /* Keep PDF pagination in lock-step with the builder: individual entries never split
+     mid-content, and a section heading must not orphan from its first entry. */
+  .cv-preview-content section > div > div {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .cv-preview-content section > h2 {
+    break-after: avoid;
+    page-break-after: avoid;
   }
 }
 

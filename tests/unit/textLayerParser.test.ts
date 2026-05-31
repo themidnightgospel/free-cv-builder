@@ -142,4 +142,113 @@ describe('parseCvFromPdfTextLayer (legacy fixture)', () => {
     expect(cv.sectionsOrder).toContain('experience');
     expect(cv.sectionsOrder).toContain('opensource');
   });
+
+  it('recovers all eight experience entries with correct titles and companies', async () => {
+    const bytes = await loadFixtureBytes();
+    const cv = await parseCvFromPdfTextLayer(bytes);
+    expect(cv).not.toBeNull();
+    if (!cv) return;
+    const summarized = cv.experience.map((e) => ({
+      jobTitle: e.jobTitle,
+      company: e.company,
+    }));
+    expect(summarized).toEqual([
+      { jobTitle: 'Software Architect', company: 'Mettler-Toledo International, Inc' },
+      { jobTitle: 'Data Engineer', company: 'Templafy' },
+      { jobTitle: 'Senior .NET Back End Developer', company: 'Leap Event Technology' },
+      { jobTitle: 'Remote Lead Back End Developer', company: 'Li3ib LLC' },
+      { jobTitle: 'Remote Lead Back End Developer', company: 'BCC Elektro-speciaalzaken BV' },
+      { jobTitle: 'Remote Senior Software Developer', company: 'WebCreek' },
+      { jobTitle: 'Back End Developer', company: 'Wandio' },
+      { jobTitle: '.NET Software Developer', company: 'DoSo Management' },
+    ]);
+  });
+
+  it('keeps the Technologies: line in the description, not in the next entry title', async () => {
+    const bytes = await loadFixtureBytes();
+    const cv = await parseCvFromPdfTextLayer(bytes);
+    expect(cv).not.toBeNull();
+    if (!cv) return;
+    const wandio = cv.experience.find((e) => e.company === 'Wandio');
+    expect(wandio).toBeDefined();
+    expect(wandio?.description).toMatch(/Technologies:\s*ASP\.NET Core/);
+    expect(cv.experience.map((e) => e.jobTitle)).not.toContain(
+      expect.stringMatching(/^Technologies:/i),
+    );
+  });
+
+  it('handles wrapped sentences without leaking them into the next header', async () => {
+    const bytes = await loadFixtureBytes();
+    const cv = await parseCvFromPdfTextLayer(bytes);
+    if (!cv) throw new Error('parse failed');
+    const templafy = cv.experience.find((e) => e.company === 'Templafy');
+    expect(templafy?.description).toMatch(
+      /Azure’s data\necosystem, strengthening my architectural perspective on data-driven systems$/,
+    );
+  });
+});
+
+describe('parseCvFromTextLines — entry header parsing edge cases', () => {
+  it('does not steal description lines as the next entry header', () => {
+    const cv = parseCvFromTextLines([
+      'Jane Doe',
+      'Engineer',
+      'EXPERIENCE',
+      'Staff Engineer',
+      'Acme • Remote',
+      'Jan 2022 – Present',
+      '- Owned design system',
+      'Technologies: TypeScript, React, Node.js',
+      'Although this was short, I learned a lot from the experience here',
+      'about building reliable systems and shipping quickly to production',
+      'Tech Lead',
+      'Beta Co • NYC',
+      'Mar 2019 – Dec 2021',
+      '- Led backend platform team',
+    ]);
+    expect(cv.experience).toHaveLength(2);
+    expect(cv.experience[0].jobTitle).toBe('Staff Engineer');
+    expect(cv.experience[0].company).toBe('Acme');
+    expect(cv.experience[0].description).toContain('Technologies: TypeScript');
+    expect(cv.experience[0].description).toContain(
+      'about building reliable systems',
+    );
+    expect(cv.experience[1].jobTitle).toBe('Tech Lead');
+    expect(cv.experience[1].company).toBe('Beta Co');
+    expect(cv.experience[1].location).toBe('NYC');
+  });
+
+  it('detects current role via Present', () => {
+    const cv = parseCvFromTextLines([
+      'Pat',
+      'Dev',
+      'EXPERIENCE',
+      'Engineer',
+      'X Co • Remote',
+      'Jan 2024 – Present',
+      '- Doing things',
+    ]);
+    expect(cv.experience[0].isCurrent).toBe(true);
+    expect(cv.experience[0].endDate).toBe('');
+    expect(cv.experience[0].startDate).toBe('Jan 2024');
+  });
+
+  it('parses education entries with year ranges', () => {
+    const cv = parseCvFromTextLines([
+      'Pat',
+      'Dev',
+      'EDUCATION',
+      'B.S. Computer Science',
+      'University of X • City',
+      '2014 – 2018',
+      'Honors thesis on distributed systems.',
+    ]);
+    expect(cv.education).toHaveLength(1);
+    expect(cv.education[0].degree).toBe('B.S. Computer Science');
+    expect(cv.education[0].institution).toBe('University of X');
+    expect(cv.education[0].location).toBe('City');
+    expect(cv.education[0].startYear).toBe('2014');
+    expect(cv.education[0].endYear).toBe('2018');
+    expect(cv.education[0].description).toContain('Honors thesis');
+  });
 });

@@ -47,7 +47,7 @@ declare global {
 }
 
 const PREVIEW_SURFACE_CLASSNAMES =
-  'relative mx-auto aspect-[1/1.4142] w-full max-w-full bg-white shadow-sm border border-slate-200 px-8 py-6 text-slate-900 print:mx-0 print:w-full print:max-w-none print:shadow-none print:border-0 print:max-h-none print:aspect-auto print:p-8';
+  'relative mx-auto aspect-[1/1.4142] w-full max-w-full bg-white shadow-sm border border-slate-200 text-slate-900 print:mx-0 print:w-full print:max-w-none print:shadow-none print:border-0 print:max-h-none print:aspect-auto print:p-0';
 
 export const App: React.FC = () => {
   const [mode, setMode] = useState<'landing' | 'editor'>('landing');
@@ -764,15 +764,13 @@ export const App: React.FC = () => {
         </div>
 
         {/* The CV preview IS the editor. Inline + popover editing. */}
-        <div className="mt-6 rounded-3xl bg-paper shadow-lift print:hidden">
-          <div className="px-8 py-6">
-            <CvPreview
-              cv={cv}
-              fontSettings={fontSettings}
-              advancedSettings={advancedSettings}
-              editor={editorBindings}
-            />
-          </div>
+        <div className="mx-auto mt-6 w-[794px] max-w-full overflow-hidden rounded-3xl bg-paper shadow-lift print:hidden">
+          <CvPreview
+            cv={cv}
+            fontSettings={fontSettings}
+            advancedSettings={advancedSettings}
+            editor={editorBindings}
+          />
         </div>
 
         {pendingPrintJob && (
