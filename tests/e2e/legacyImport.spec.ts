@@ -30,4 +30,34 @@ test.describe('Legacy PDF import', () => {
       page.getByText(/Software Architect/).first(),
     ).toBeVisible();
   });
+
+  test('renders Open Source contribution description in the preview', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => window.localStorage.clear());
+    await page.goto('/');
+    const fileChooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: /Upload existing CV/i }).click();
+    const fileChooser = await fileChooserPromise;
+    await fileChooser.setFiles(FIXTURE);
+    await expect(
+      page.getByRole('button', { name: /Download PDF/i }),
+    ).toBeVisible({ timeout: 60_000 });
+
+    const osHeading = page.getByRole('heading', {
+      name: /Open Source Contributions/i,
+    });
+    await expect(osHeading).toBeVisible({ timeout: 60_000 });
+    const osSection = page
+      .locator('section')
+      .filter({ has: osHeading })
+      .first();
+    await expect(osSection.getByText(/Imposter/).first()).toBeVisible();
+    await expect(
+      osSection.getByText(
+        /Implemented a high-performance, memory-efficient mocking library/,
+      ),
+    ).toBeVisible();
+    await expect(osSection.getByText(/mocking frameworks/)).toBeVisible();
+  });
 });

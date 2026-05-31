@@ -177,6 +177,34 @@ describe('parseCvFromPdfTextLayer (legacy fixture)', () => {
     );
   });
 
+  it('parses Open Source contributions with a clean link and full description', async () => {
+    const bytes = await loadFixtureBytes();
+    const cv = await parseCvFromPdfTextLayer(bytes);
+    expect(cv).not.toBeNull();
+    if (!cv) return;
+    expect(cv.openSource).toHaveLength(1);
+    const imposter = cv.openSource[0];
+    expect(imposter.name).toBe('Imposter');
+    expect(imposter.role).toBe('Author');
+    expect(imposter.link).toBe(
+      'https://github.com/themidnightgospel/Imposter',
+    );
+    expect(imposter.description.startsWith('Implemented')).toBe(true);
+    expect(imposter.description).toContain('mocking library for .NET');
+    expect(imposter.description).toContain('mocking frameworks');
+    // The first description word must not be glued to the URL.
+    expect(imposter.link.endsWith('Implemented')).toBe(false);
+    expect(imposter.link).not.toContain('Implemented');
+  });
+
+  it('still rejoins URL fragments that pdf.js split mid-token', async () => {
+    const bytes = await loadFixtureBytes();
+    const cv = await parseCvFromPdfTextLayer(bytes);
+    expect(cv?.personalInfo.linkedin).toBe(
+      'https://www.linkedin.com/in/bitchiko-tchelidze-56a01ab4/',
+    );
+  });
+
   it('handles wrapped sentences without leaking them into the next header', async () => {
     const bytes = await loadFixtureBytes();
     const cv = await parseCvFromPdfTextLayer(bytes);
@@ -231,6 +259,36 @@ describe('parseCvFromTextLines — entry header parsing edge cases', () => {
     expect(cv.experience[0].isCurrent).toBe(true);
     expect(cv.experience[0].endDate).toBe('');
     expect(cv.experience[0].startDate).toBe('Jan 2024');
+  });
+
+  it('does not glue an English description onto a URL on the next line', () => {
+    const cv = parseCvFromTextLines([
+      'Pat',
+      'Dev',
+      'OPEN SOURCE CONTRIBUTIONS',
+      'CoolLib',
+      'Maintainer',
+      'https://github.com/pat/coollib',
+      'Implemented a high-performance build pipeline that ships nightly.',
+      'Added a plugin API used by community contributors.',
+    ]);
+    expect(cv.openSource).toHaveLength(1);
+    const lib = cv.openSource[0];
+    expect(lib.link).toBe('https://github.com/pat/coollib');
+    expect(lib.description.startsWith('Implemented')).toBe(true);
+    expect(lib.description).toContain('plugin API');
+  });
+
+  it('joins URL fragments split across lines (LinkedIn handle case)', () => {
+    const cv = parseCvFromTextLines([
+      'Pat',
+      'Dev',
+      'Email: pat@example.com LinkedIn: https://www.linkedin.com/i',
+      'n/pat-doe-123/',
+    ]);
+    expect(cv.personalInfo.linkedin).toBe(
+      'https://www.linkedin.com/in/pat-doe-123/',
+    );
   });
 
   it('parses education entries with year ranges', () => {

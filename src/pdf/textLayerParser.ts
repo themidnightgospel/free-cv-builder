@@ -89,21 +89,26 @@ const splitBullet = (line: string): { left: string; right: string } => {
 };
 
 const joinHyphenLine = (lines: string[]): string[] => {
-  // pdf.js may break "https://linkedin.com/i" / "n/handle" — re-join when a line ends mid-URL
+  // pdf.js may break "https://linkedin.com/i" / "n/handle" — re-join when a line ends mid-URL.
+  // Only merge if the next line's first token clearly looks like a URL fragment (contains /, ., ?,
+  // or # within the first whitespace-bounded token). A plain English continuation like
+  // "Implemented a high-performance..." must NOT be glued onto a URL.
   const merged: string[] = [];
   for (let i = 0; i < lines.length; i += 1) {
     const current = lines[i];
     const next = lines[i + 1];
-    if (
-      current &&
-      next &&
-      /(https?:\/\/\S+|www\.\S+)$/.test(current) &&
-      /^[a-z0-9._\-/?#%&=+]+/i.test(next) &&
-      !isSectionHeader(next)
-    ) {
-      merged.push(`${current}${next.trim()}`);
-      i += 1;
-      continue;
+    if (current && next && !isSectionHeader(next)) {
+      const endsMidUrl = /(https?:\/\/\S+|www\.\S+)$/.test(current);
+      const firstTokenOfNext = next.match(/^\S+/)?.[0] ?? '';
+      const looksLikeUrlContinuation =
+        firstTokenOfNext.length > 0 &&
+        /[/?#&=]/.test(firstTokenOfNext) &&
+        !/\s/.test(firstTokenOfNext);
+      if (endsMidUrl && looksLikeUrlContinuation) {
+        merged.push(`${current}${next.trim()}`);
+        i += 1;
+        continue;
+      }
     }
     merged.push(current);
   }

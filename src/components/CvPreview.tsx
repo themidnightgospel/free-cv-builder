@@ -1220,9 +1220,28 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                             'text-[11px] text-blue-600 break-all hover:underline',
                           )}
                       </div>
+                      {c.description && (
+                        <div className="mt-1 text-[11px] text-slate-700">
+                          <div className="cv-markdown">
+                            <ReactMarkdown
+                              skipHtml
+                              components={markdownComponents}
+                            >
+                              {preserveBlankLines(c.description)}
+                            </ReactMarkdown>
+                          </div>
+                        </div>
+                      )}
                       {c.achievements && (
-                        <div className="mt-1 text-[11px] text-slate-700 whitespace-pre-line">
-                          {c.achievements}
+                        <div className="mt-1 text-[11px] text-slate-700">
+                          <div className="cv-markdown">
+                            <ReactMarkdown
+                              skipHtml
+                              components={markdownComponents}
+                            >
+                              {preserveBlankLines(c.achievements)}
+                            </ReactMarkdown>
+                          </div>
                         </div>
                       )}
                     </>
