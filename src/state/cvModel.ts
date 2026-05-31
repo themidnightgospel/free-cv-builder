@@ -80,7 +80,7 @@ export const DEFAULT_FONT_SETTINGS: FontSettings = {
 };
 
 export const DEFAULT_ADVANCED_SETTINGS: AdvancedSettings = {
-  sectionGapPx: 16,
+  sectionGapPx: 8,
   lineHeight: 1.5,
   accentColor: '#2563eb',
   showSectionDividers: false,

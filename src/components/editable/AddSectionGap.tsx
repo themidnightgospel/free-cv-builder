@@ -1,6 +1,5 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { PlusIcon } from '@heroicons/react/24/outline';
-import { EditPopover } from './EditPopover';
 
 export interface AddSectionOption {
   id: string;
@@ -21,12 +20,36 @@ export const AddSectionGap: React.FC<AddSectionGapProps> = ({
   size = 'md',
 }) => {
   const [open, setOpen] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const handler = (event: MouseEvent) => {
+      if (!containerRef.current) return;
+      if (containerRef.current.contains(event.target as Node)) return;
+      setOpen(false);
+    };
+    const escapeHandler = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    const timer = window.setTimeout(() => {
+      document.addEventListener('mousedown', handler);
+    }, 0);
+    document.addEventListener('keydown', escapeHandler);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('keydown', escapeHandler);
+    };
+  }, [open]);
 
   const heightClass = size === 'sm' ? 'h-4' : 'h-6';
 
   return (
-    <div className={`group relative my-1 flex w-full items-center ${heightClass}`}>
+    <div
+      ref={containerRef}
+      className={`group relative my-1 flex w-full items-center ${heightClass}`}
+    >
       <div
         aria-hidden
         className={`absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-accent/0 transition ${
@@ -34,7 +57,6 @@ export const AddSectionGap: React.FC<AddSectionGapProps> = ({
         }`}
       />
       <button
-        ref={buttonRef}
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className={`absolute left-1/2 z-10 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border border-accent bg-paper text-accent shadow-soft transition ${
@@ -44,11 +66,13 @@ export const AddSectionGap: React.FC<AddSectionGapProps> = ({
         } hover:bg-accent hover:text-paper`}
         aria-label="Add section here"
         title="Add section here"
+        aria-expanded={open}
       >
         <PlusIcon className="h-3.5 w-3.5" strokeWidth={2.5} />
       </button>
       {open && (
-        <EditPopover anchorRef={buttonRef} onClose={() => setOpen(false)} width={240}>
+        <div className="absolute left-1/2 top-full z-30 mt-2 w-60 -translate-x-1/2 rounded-2xl border border-slate-200 bg-paper p-3 shadow-lift">
+
           <div className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted">
             Add a section
           </div>
@@ -77,7 +101,7 @@ export const AddSectionGap: React.FC<AddSectionGapProps> = ({
               </button>
             ))}
           </div>
-        </EditPopover>
+        </div>
       )}
     </div>
   );

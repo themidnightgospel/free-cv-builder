@@ -274,8 +274,61 @@ export const App: React.FC = () => {
     addToast(`Deleted "${name}".`, 'info');
   };
 
-  const handleRemoveSection = (sectionId: SectionId) => {
+  const countSectionItems = (
+    cvData: CvData,
+    sectionId: SectionId,
+  ): number => {
+    if (isCustomSectionId(sectionId)) return 1;
+    switch (sectionId) {
+      case 'experience':
+        return cvData.experience.length;
+      case 'education':
+        return cvData.education.length;
+      case 'projects':
+        return cvData.projects.length;
+      case 'achievements':
+        return cvData.achievements.length;
+      case 'publications':
+        return cvData.publications.length;
+      case 'talks':
+        return cvData.talks.length;
+      case 'volunteer':
+        return cvData.volunteer.length;
+      case 'opensource':
+        return cvData.openSource.length;
+      case 'skills':
+        return cvData.skills.length;
+      case 'languages':
+        return cvData.languages.length;
+      default:
+        return 0;
+    }
+  };
+
+  const getSectionLabel = (sectionId: SectionId, cvData: CvData): string => {
+    if (isCustomSectionId(sectionId)) {
+      const id = sectionId.replace('custom:', '');
+      const found = cvData.customSections.find((s) => s.id === id);
+      return found?.title?.trim() || 'Custom';
+    }
+    return sectionLabel[sectionId as CvSectionKey] ?? 'this';
+  };
+
+  const handleRemoveSection = async (sectionId: SectionId) => {
     if (sectionId === 'personal') return;
+    const label = getSectionLabel(sectionId, cv);
+    const count = countSectionItems(cv, sectionId);
+    const itemPhrase =
+      count === 0
+        ? 'It is currently empty.'
+        : `It contains ${count} ${count === 1 ? 'item' : 'items'} that will be removed with it.`;
+    const confirmed = await confirmDialog({
+      title: `Delete ${label} section?`,
+      message: `You're about to delete the entire ${label} section. ${itemPhrase} This cannot be undone.`,
+      confirmLabel: 'Delete section',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     setCv((prev) => {
       if (!prev.sectionsOrder.includes(sectionId)) return prev;
       const nextSectionsOrder = prev.sectionsOrder.filter(
@@ -293,6 +346,14 @@ export const App: React.FC = () => {
       };
     });
   };
+
+  const confirmDeleteEntry = (message: string): Promise<boolean> =>
+    confirmDialog({
+      title: 'Delete this item?',
+      message,
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
 
   const handleDownloadPdf = async () => {
     const personalValidation = validatePersonalInfo(cv.personalInfo);
@@ -711,6 +772,7 @@ export const App: React.FC = () => {
     onInsertSectionAt,
     onMoveSection: onMoveSectionByDirection,
     onRemoveSection: handleRemoveSection,
+    confirmDeleteEntry,
   };
 
   return (

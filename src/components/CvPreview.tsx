@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import type {
@@ -12,29 +12,22 @@ import type {
 import { DEFAULT_ADVANCED_SETTINGS } from '../state/cvModel';
 import { formatMonthForDisplay } from '../utils/dateFields';
 import { EditableText } from './editable/EditableText';
+import { EditableMonth } from './editable/EditableMonth';
+import { EditableSelect } from './editable/EditableSelect';
+import { EditableToggle } from './editable/EditableToggle';
 import { AddSectionGap } from './editable/AddSectionGap';
 import type { AddSectionOption } from './editable/AddSectionGap';
 import { renderEditableSection } from './editable/renderEditableSection';
-import {
-  AchievementForm,
-  CustomSectionForm as CustomBodyForm,
-  EducationForm,
-  ExperienceForm,
-  LanguageForm,
-  ProjectForm,
-  PublicationForm,
-  SkillForm,
-  TalkForm,
-  VolunteerForm,
-} from './editable/EntryForms';
 import type {
   AchievementEntry,
   CustomSection,
   EducationEntry,
   Language,
+  LanguageLevel,
   ProjectEntry,
   PublicationEntry,
   Skill,
+  SkillLevel,
   TalkEntry,
   VolunteerExperienceEntry,
 } from '../types';
@@ -48,6 +41,20 @@ import {
 
 const hasText = (value?: string | null): boolean =>
   Boolean(value && value.trim().length > 0);
+
+const SKILL_LEVEL_OPTIONS: { value: SkillLevel; label: string }[] = [
+  { value: 'Beginner', label: 'Beginner' },
+  { value: 'Intermediate', label: 'Intermediate' },
+  { value: 'Advanced', label: 'Advanced' },
+];
+
+const LANGUAGE_LEVEL_OPTIONS: { value: LanguageLevel; label: string }[] = [
+  { value: 'Native', label: 'Native' },
+  { value: 'Fluent', label: 'Fluent' },
+  { value: 'Professional', label: 'Professional' },
+  { value: 'Intermediate', label: 'Intermediate' },
+  { value: 'Basic', label: 'Basic' },
+];
 
 const preserveBlankLines = (markdown: string): string => {
   const normalized = markdown.replace(/\r\n?/g, '\n');
@@ -347,6 +354,8 @@ export interface EditorBindings {
   onInsertSectionAt: (afterIndex: number, sectionId: string) => void;
   onMoveSection: (sectionId: SectionId, direction: -1 | 1) => void;
   onRemoveSection: (sectionId: SectionId) => void;
+  /** Resolves to true when the user confirms an entry deletion. */
+  confirmDeleteEntry: (message: string) => Promise<boolean>;
 }
 
 export interface CvPreviewProps {
@@ -359,6 +368,112 @@ export interface CvPreviewProps {
 
 export const PRINT_PAGE_WIDTH = 794; // px at 96dpi for A4 width
 export const PRINT_PAGE_HEIGHT = 1123; // px at 96dpi for A4 height
+
+const renderProjectLike = (
+  entry: ProjectEntry,
+  update: (next: ProjectEntry) => void,
+  isEditor: boolean,
+  namePlaceholder: string,
+) => (
+  <>
+    <div className="flex flex-wrap items-start justify-between gap-2">
+      <div className="min-w-0 flex-1">
+        <p className="text-[12px] font-semibold">
+          {isEditor ? (
+            <EditableText
+              value={entry.name}
+              onChange={(value) => update({ ...entry, name: value })}
+              placeholder={namePlaceholder}
+              ariaLabel="Project name"
+            />
+          ) : (
+            entry.name
+          )}
+        </p>
+        <p className="text-[11px] text-slate-600">
+          {isEditor ? (
+            <>
+              <EditableText
+                value={entry.role}
+                onChange={(value) => update({ ...entry, role: value })}
+                placeholder="Role"
+                ariaLabel="Role"
+              />
+              {' • '}
+              <EditableText
+                value={entry.techStack}
+                onChange={(value) => update({ ...entry, techStack: value })}
+                placeholder="Tech stack"
+                ariaLabel="Tech stack"
+              />
+            </>
+          ) : (
+            <>
+              {entry.role}
+              {entry.techStack ? ` • ${entry.techStack}` : ''}
+            </>
+          )}
+        </p>
+      </div>
+      {isEditor ? (
+        <div className="text-[11px] text-blue-600 break-all">
+          <EditableText
+            value={entry.link}
+            onChange={(value) => update({ ...entry, link: value })}
+            placeholder="https://"
+            ariaLabel="Link"
+            validate={validateOptionalUrl}
+          />
+        </div>
+      ) : (
+        entry.link &&
+        renderExternalLink(
+          entry.link,
+          entry.link,
+          'text-[11px] text-blue-600 break-all hover:underline',
+        )
+      )}
+    </div>
+    <div className="mt-1 text-[11px] text-slate-700">
+      {isEditor ? (
+        <EditableText
+          value={entry.description}
+          onChange={(value) => update({ ...entry, description: value })}
+          multiline
+          placeholder="Brief description (markdown supported)"
+          ariaLabel="Description"
+        />
+      ) : (
+        entry.description && (
+          <div className="cv-markdown">
+            <ReactMarkdown skipHtml components={markdownComponents}>
+              {preserveBlankLines(entry.description)}
+            </ReactMarkdown>
+          </div>
+        )
+      )}
+    </div>
+    <div className="mt-1 text-[11px] text-slate-700">
+      {isEditor ? (
+        <EditableText
+          value={entry.achievements}
+          onChange={(value) => update({ ...entry, achievements: value })}
+          multiline
+          placeholder="Achievements (markdown)"
+          ariaLabel="Achievements"
+        />
+      ) : (
+        entry.achievements && (
+          <div className="cv-markdown">
+            <ReactMarkdown skipHtml components={markdownComponents}>
+              {preserveBlankLines(entry.achievements)}
+            </ReactMarkdown>
+          </div>
+        )
+      )}
+    </div>
+  </>
+);
 
 export const CvPreview: React.FC<CvPreviewProps> = ({
   cv,
@@ -395,171 +510,30 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
   const hasOpenSource = hasMeaningfulProjects(openSource);
   const hasSkills = hasMeaningfulSkills(skills);
   const hasLanguages = hasMeaningfulLanguages(languages);
-  const [pageIndex, setPageIndex] = useState(0);
-  const [openEntryId, setOpenEntryId] = useState<string | null>(null);
   const [displayWidth, setDisplayWidth] = useState(PRINT_PAGE_WIDTH);
-  const [displayPageHeight, setDisplayPageHeight] = useState(
-    PRINT_PAGE_HEIGHT,
-  );
-  const [pageStarts, setPageStarts] = useState<number[]>([0]);
-  const [isPrinting, setIsPrinting] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const pageIndexRef = useRef(0);
-  const pendingPrintPageRef = useRef<number | null>(null);
 
-  const recomputeLayout = React.useCallback(() => {
-    const viewport = viewportRef.current;
-    const content = contentRef.current;
-    if (!viewport || !content) return;
-    const width =
-      viewport.clientWidth || content.clientWidth || PRINT_PAGE_WIDTH;
-    const pageHeight = (width / PRINT_PAGE_WIDTH) * PRINT_PAGE_HEIGHT;
-    setDisplayWidth(width);
-    setDisplayPageHeight(pageHeight);
-    const sections = Array.from(
-      content.querySelectorAll<HTMLElement>('section'),
-    );
-    if (sections.length === 0) {
-      setPageStarts([0]);
-      return;
-    }
-    const contentRect = content.getBoundingClientRect();
-
-    // Build a flat list of "atomic blocks" we are willing to break before.
-    // A block is either a section heading + its first entry (tied together) or an individual entry.
-    type Block = { top: number; bottom: number };
-    const blocks: Block[] = [];
-    for (const section of sections) {
-      const heading = section.querySelector<HTMLElement>(':scope > h2');
-      const entries = Array.from(
-        section.querySelectorAll<HTMLElement>(':scope > div > div'),
-      );
-      if (entries.length === 0) {
-        const r = section.getBoundingClientRect();
-        blocks.push({
-          top: r.top - contentRect.top,
-          bottom: r.bottom - contentRect.top,
-        });
-        continue;
-      }
-      entries.forEach((entry, index) => {
-        const entryRect = entry.getBoundingClientRect();
-        // The first entry must stay with the section heading.
-        const topElement = index === 0 && heading ? heading : entry;
-        const topRect = topElement.getBoundingClientRect();
-        blocks.push({
-          top: topRect.top - contentRect.top,
-          bottom: entryRect.bottom - contentRect.top,
-        });
-      });
-    }
-
-    const starts = [0];
-    let currentStart = 0;
-    for (const block of blocks) {
-      const blockFits = block.bottom - block.top <= PRINT_PAGE_HEIGHT;
-      if (
-        block.bottom > currentStart + PRINT_PAGE_HEIGHT &&
-        block.top > currentStart &&
-        blockFits
-      ) {
-        currentStart = block.top;
-        starts.push(block.top);
-      }
-    }
-    setPageStarts(starts);
-  }, []);
-
+  // Only the landing-page poster (non-editor, non-print) needs width-tracking
+  // for its scale-to-fit transform. The editor and the print copy render at
+  // native PRINT_PAGE_WIDTH with no scaling.
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
+    if (isEditor || forcePrintLayout) return;
     const viewport = viewportRef.current;
-    const content = contentRef.current;
-    if (!viewport || !content) return;
-
-    recomputeLayout();
-
+    if (!viewport) return;
+    const update = () => setDisplayWidth(viewport.clientWidth || PRINT_PAGE_WIDTH);
+    update();
     if ('ResizeObserver' in window) {
-      const viewportObserver = new ResizeObserver(recomputeLayout);
-      const contentObserver = new ResizeObserver(recomputeLayout);
-      viewportObserver.observe(viewport);
-      contentObserver.observe(content);
-      return () => {
-        viewportObserver.disconnect();
-        contentObserver.disconnect();
-      };
+      const observer = new ResizeObserver(update);
+      observer.observe(viewport);
+      return () => observer.disconnect();
     }
-
     return;
-  }, [recomputeLayout]);
-
-  useEffect(() => {
-    recomputeLayout();
-  }, [cv, recomputeLayout]);
+  }, [isEditor, forcePrintLayout]);
 
   const widthRatio = displayWidth / PRINT_PAGE_WIDTH || 1;
-  useEffect(() => {
-    pageIndexRef.current = pageIndex;
-  }, [pageIndex]);
-
-  useEffect(() => {
-    const totalPagesNow = Math.max(pageStarts.length, 1);
-    setPageIndex((prev) => {
-      const maxIndex = Math.max(totalPagesNow - 1, 0);
-      return prev > maxIndex ? maxIndex : prev;
-    });
-  }, [pageStarts]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const prepareForPrint = () => {
-      if (pendingPrintPageRef.current === null) {
-        pendingPrintPageRef.current = pageIndexRef.current;
-      }
-      setPageIndex(0);
-      setIsPrinting(true);
-    };
-    const cleanupAfterPrint = () => {
-      setIsPrinting(false);
-      if (pendingPrintPageRef.current !== null) {
-        setPageIndex(pendingPrintPageRef.current);
-        pendingPrintPageRef.current = null;
-      }
-    };
-
-    window.addEventListener('beforeprint', prepareForPrint);
-    window.addEventListener('afterprint', cleanupAfterPrint);
-
-    let mediaQuery: MediaQueryList | null = null;
-    let handleChange: ((event: MediaQueryListEvent) => void) | null = null;
-    if (typeof window.matchMedia === 'function') {
-      mediaQuery = window.matchMedia('print');
-      handleChange = (event: MediaQueryListEvent) => {
-        if (event.matches) {
-          prepareForPrint();
-        } else {
-          cleanupAfterPrint();
-        }
-      };
-      mediaQuery.addEventListener('change', handleChange);
-    }
-
-    return () => {
-      window.removeEventListener('beforeprint', prepareForPrint);
-      window.removeEventListener('afterprint', cleanupAfterPrint);
-      if (mediaQuery && handleChange) {
-        mediaQuery.removeEventListener('change', handleChange);
-      }
-    };
-  }, []);
-
-  const totalPages = Math.max(pageStarts.length, 1);
-  const printMode = forcePrintLayout || isPrinting;
-  // Snap to the top of the section that opens each page so lines never get clipped mid-glyph.
-  const safePageIndex = Math.min(pageIndex, pageStarts.length - 1);
-  const pageShiftInPrintCoords = printMode
-    ? 0
-    : pageStarts[safePageIndex] ?? 0;
+  const printMode = forcePrintLayout;
   const pxToRem = (value: number) => `${Math.max(0, value) / 16}rem`;
   const fontVariableStyles = {
     '--font-full-name': pxToRem(fontSettings.fullName),
@@ -579,33 +553,36 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
   const contentStyles: React.CSSProperties = {
     // Always render at native A4 print width so text wraps the same as the PDF.
     width: `${PRINT_PAGE_WIDTH}px`,
-    height: printMode ? 'auto' : undefined,
+    height: 'auto',
     ...fontVariableStyles,
   };
 
-  if (!printMode) {
-    const scale = isEditor ? 1 : widthRatio;
+  // Scale the native A4 content into narrower viewports — only for the landing
+  // page poster. The editor renders natively and lets the page scroll.
+  if (!printMode && !isEditor) {
     contentStyles.transformOrigin = 'top left';
-    contentStyles.transform = `scale(${scale}) translateY(-${pageShiftInPrintCoords}px)`;
+    contentStyles.transform = `scale(${widthRatio})`;
   }
 
+  // Reserve vertical space when scaling so the parent grows with the scaled
+  // content rather than overlapping siblings.
+  const scaledHeight =
+    !printMode && !isEditor
+      ? `calc(${PRINT_PAGE_HEIGHT}px * ${widthRatio})`
+      : undefined;
+
   return (
-    <div className="flex h-full flex-col">
-      <div
-        ref={viewportRef}
-        className="flex-1 overflow-hidden print:h-auto print:overflow-visible"
-        style={{
-          height: printMode
-            ? 'auto'
-            : isEditor
-              ? PRINT_PAGE_HEIGHT
-              : displayPageHeight || PRINT_PAGE_HEIGHT,
-          overflow: printMode ? 'visible' : 'hidden',
-        }}
-      >
+    <div
+      ref={viewportRef}
+      className="relative print:h-auto"
+      style={{
+        height: scaledHeight,
+        overflow: !printMode && !isEditor ? 'hidden' : 'visible',
+      }}
+    >
         <div
           ref={contentRef}
-          className={`cv-preview-content flex flex-col text-xs text-slate-900 transition-transform duration-200 print:transition-none${
+          className={`cv-preview-content flex flex-col text-xs text-slate-900 print:transition-none${
             advanced.showSectionDividers ? ' cv-preview-content--dividers' : ''
           }`}
           style={contentStyles}
@@ -616,17 +593,32 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
         className="mt-4 flex flex-col"
         style={{ gap: 'var(--cv-section-gap, 1rem)' }}
       >
-        {personalInfo.summary && (
+        {(personalInfo.summary || isEditor) && (
           <section>
             <h2 className="mb-1 font-section-title font-semibold uppercase tracking-wide text-slate-500">
               Professional Summary
             </h2>
             <div className="text-[11px] text-slate-700">
-              <div className="cv-markdown">
-                <ReactMarkdown skipHtml components={markdownComponents}>
-                  {preserveBlankLines(personalInfo.summary)}
-                </ReactMarkdown>
-              </div>
+              {isEditor ? (
+                <EditableText
+                  value={personalInfo.summary}
+                  onChange={(value) =>
+                    editor?.onUpdatePersonalInfo({
+                      ...personalInfo,
+                      summary: value,
+                    })
+                  }
+                  multiline
+                  placeholder="Brief professional summary (markdown supported)"
+                  ariaLabel="Professional summary"
+                />
+              ) : (
+                <div className="cv-markdown">
+                  <ReactMarkdown skipHtml components={markdownComponents}>
+                    {preserveBlankLines(personalInfo.summary)}
+                  </ReactMarkdown>
+                </div>
+              )}
             </div>
           </section>
         )}
@@ -658,6 +650,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
               ? {
                   onMoveSection: editor.onMoveSection,
                   onRemoveSection: editor.onRemoveSection,
+                  confirmDelete: editor.confirmDeleteEntry,
                 }
               : {};
 
@@ -682,17 +675,13 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                     isCurrent: false,
                     description: '',
                   }),
-                  FormComponent: ExperienceForm,
-                  popoverTitle: 'Experience',
-                  popoverWidth: 580,
                   addLabel: 'Add experience',
+                  entryLabel: 'experience entry',
                   displayFilter: (e) =>
                     Boolean(e.jobTitle || e.company || e.description),
                   isEditor,
-                  openEntryId,
-                  setOpenEntryId,
                   ...sectionMoveHandlers,
-                  renderEntry: (e) => {
+                  renderEntry: (e, update) => {
                     const startDate = formatMonthForDisplay(e.startDate);
                     const endDate = e.isCurrent
                       ? 'Present'
@@ -700,40 +689,122 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                     const hasRange = Boolean(startDate || endDate);
                     return (
                       <>
-                        <div className="flex justify-between">
-                          <div>
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
                             <p className="text-[12px] font-semibold">
-                              {e.jobTitle || (
-                                <span className="italic text-slate-400">
-                                  Job title
-                                </span>
+                              {isEditor ? (
+                                <EditableText
+                                  value={e.jobTitle}
+                                  onChange={(value) =>
+                                    update({ ...e, jobTitle: value })
+                                  }
+                                  placeholder="Job title"
+                                  ariaLabel="Job title"
+                                />
+                              ) : (
+                                e.jobTitle
                               )}
                             </p>
                             <p className="text-[11px] text-slate-600">
-                              {e.company}
-                              {e.location ? ` • ${e.location}` : ''}
+                              {isEditor ? (
+                                <>
+                                  <EditableText
+                                    value={e.company}
+                                    onChange={(value) =>
+                                      update({ ...e, company: value })
+                                    }
+                                    placeholder="Company"
+                                    ariaLabel="Company"
+                                  />
+                                  {' • '}
+                                  <EditableText
+                                    value={e.location}
+                                    onChange={(value) =>
+                                      update({ ...e, location: value })
+                                    }
+                                    placeholder="Location"
+                                    ariaLabel="Location"
+                                  />
+                                </>
+                              ) : (
+                                <>
+                                  {e.company}
+                                  {e.location ? ` • ${e.location}` : ''}
+                                </>
+                              )}
                             </p>
                           </div>
-                          {hasRange && (
-                            <p className="text-[11px] text-slate-500">
-                              {startDate}
-                              {(endDate || e.isCurrent) && ' – '}
-                              {endDate}
-                            </p>
+                          {isEditor ? (
+                            <div className="flex flex-col items-end gap-1 text-[11px] text-slate-500">
+                              <div className="flex items-center gap-1">
+                                <EditableMonth
+                                  value={e.startDate}
+                                  onChange={(value) =>
+                                    update({ ...e, startDate: value })
+                                  }
+                                  placeholder="Start"
+                                  ariaLabel="Start date"
+                                />
+                                <span> – </span>
+                                <EditableMonth
+                                  value={e.endDate}
+                                  onChange={(value) =>
+                                    update({ ...e, endDate: value })
+                                  }
+                                  placeholder={
+                                    e.isCurrent ? 'Present' : 'End'
+                                  }
+                                  ariaLabel="End date"
+                                  disabled={e.isCurrent}
+                                />
+                              </div>
+                              <EditableToggle
+                                checked={e.isCurrent}
+                                onChange={(checked) =>
+                                  update({
+                                    ...e,
+                                    isCurrent: checked,
+                                    endDate: checked ? '' : e.endDate,
+                                  })
+                                }
+                                label="Still working here"
+                                ariaLabel="Currently working here"
+                              />
+                            </div>
+                          ) : (
+                            hasRange && (
+                              <p className="text-[11px] text-slate-500">
+                                {startDate}
+                                {(endDate || e.isCurrent) && ' – '}
+                                {endDate}
+                              </p>
+                            )
                           )}
                         </div>
-                        {e.description && (
-                          <div className="mt-1 text-[11px] text-slate-700">
-                            <div className="cv-markdown">
-                              <ReactMarkdown
-                                skipHtml
-                                components={markdownComponents}
-                              >
-                                {preserveBlankLines(e.description)}
-                              </ReactMarkdown>
-                            </div>
-                          </div>
-                        )}
+                        <div className="mt-1 text-[11px] text-slate-700">
+                          {isEditor ? (
+                            <EditableText
+                              value={e.description}
+                              onChange={(value) =>
+                                update({ ...e, description: value })
+                              }
+                              multiline
+                              placeholder="- Owned the design system…&#10;- Shipped accessibility audit…"
+                              ariaLabel="Experience description"
+                            />
+                          ) : (
+                            e.description && (
+                              <div className="cv-markdown">
+                                <ReactMarkdown
+                                  skipHtml
+                                  components={markdownComponents}
+                                >
+                                  {preserveBlankLines(e.description)}
+                                </ReactMarkdown>
+                              </div>
+                            )
+                          )}
+                        </div>
                       </>
                     );
                   },
@@ -762,17 +833,13 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                     isCurrent: false,
                     description: '',
                   }),
-                  FormComponent: EducationForm,
-                  popoverTitle: 'Education',
-                  popoverWidth: 560,
                   addLabel: 'Add education',
+                  entryLabel: 'education entry',
                   displayFilter: (e) =>
                     Boolean(e.degree || e.institution || e.description),
                   isEditor,
-                  openEntryId,
-                  setOpenEntryId,
                   ...sectionMoveHandlers,
-                  renderEntry: (e) => {
+                  renderEntry: (e, update) => {
                     const startYear = formatMonthForDisplay(e.startYear);
                     const endYear = e.isCurrent
                       ? 'Present'
@@ -780,40 +847,122 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                     const hasRange = Boolean(startYear || endYear);
                     return (
                       <>
-                        <div className="flex justify-between">
-                          <div>
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
                             <p className="text-[12px] font-semibold">
-                              {e.degree || (
-                                <span className="italic text-slate-400">
-                                  Degree
-                                </span>
+                              {isEditor ? (
+                                <EditableText
+                                  value={e.degree}
+                                  onChange={(value) =>
+                                    update({ ...e, degree: value })
+                                  }
+                                  placeholder="Degree"
+                                  ariaLabel="Degree"
+                                />
+                              ) : (
+                                e.degree
                               )}
                             </p>
                             <p className="text-[11px] text-slate-600">
-                              {e.institution}
-                              {e.location ? ` • ${e.location}` : ''}
+                              {isEditor ? (
+                                <>
+                                  <EditableText
+                                    value={e.institution}
+                                    onChange={(value) =>
+                                      update({ ...e, institution: value })
+                                    }
+                                    placeholder="Institution"
+                                    ariaLabel="Institution"
+                                  />
+                                  {' • '}
+                                  <EditableText
+                                    value={e.location}
+                                    onChange={(value) =>
+                                      update({ ...e, location: value })
+                                    }
+                                    placeholder="Location"
+                                    ariaLabel="Location"
+                                  />
+                                </>
+                              ) : (
+                                <>
+                                  {e.institution}
+                                  {e.location ? ` • ${e.location}` : ''}
+                                </>
+                              )}
                             </p>
                           </div>
-                          {hasRange && (
-                            <p className="text-[11px] text-slate-500">
-                              {startYear}
-                              {(endYear || e.isCurrent) && ' – '}
-                              {endYear}
-                            </p>
+                          {isEditor ? (
+                            <div className="flex flex-col items-end gap-1 text-[11px] text-slate-500">
+                              <div className="flex items-center gap-1">
+                                <EditableMonth
+                                  value={e.startYear}
+                                  onChange={(value) =>
+                                    update({ ...e, startYear: value })
+                                  }
+                                  placeholder="Start"
+                                  ariaLabel="Start year"
+                                />
+                                <span> – </span>
+                                <EditableMonth
+                                  value={e.endYear}
+                                  onChange={(value) =>
+                                    update({ ...e, endYear: value })
+                                  }
+                                  placeholder={
+                                    e.isCurrent ? 'Present' : 'End'
+                                  }
+                                  ariaLabel="End year"
+                                  disabled={e.isCurrent}
+                                />
+                              </div>
+                              <EditableToggle
+                                checked={e.isCurrent}
+                                onChange={(checked) =>
+                                  update({
+                                    ...e,
+                                    isCurrent: checked,
+                                    endYear: checked ? '' : e.endYear,
+                                  })
+                                }
+                                label="In progress"
+                                ariaLabel="Education in progress"
+                              />
+                            </div>
+                          ) : (
+                            hasRange && (
+                              <p className="text-[11px] text-slate-500">
+                                {startYear}
+                                {(endYear || e.isCurrent) && ' – '}
+                                {endYear}
+                              </p>
+                            )
                           )}
                         </div>
-                        {e.description && (
-                          <div className="mt-1 text-[11px] text-slate-700">
-                            <div className="cv-markdown">
-                              <ReactMarkdown
-                                skipHtml
-                                components={markdownComponents}
-                              >
-                                {preserveBlankLines(e.description)}
-                              </ReactMarkdown>
-                            </div>
-                          </div>
-                        )}
+                        <div className="mt-1 text-[11px] text-slate-700">
+                          {isEditor ? (
+                            <EditableText
+                              value={e.description}
+                              onChange={(value) =>
+                                update({ ...e, description: value })
+                              }
+                              multiline
+                              placeholder="Honors, focus, thesis…"
+                              ariaLabel="Education description"
+                            />
+                          ) : (
+                            e.description && (
+                              <div className="cv-markdown">
+                                <ReactMarkdown
+                                  skipHtml
+                                  components={markdownComponents}
+                                >
+                                  {preserveBlankLines(e.description)}
+                                </ReactMarkdown>
+                              </div>
+                            )
+                          )}
+                        </div>
                       </>
                     );
                   },
@@ -841,64 +990,13 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                     achievements: '',
                     link: '',
                   }),
-                  FormComponent: ProjectForm,
-                  popoverTitle: 'Project',
-                  popoverWidth: 560,
                   addLabel: 'Add project',
+                  entryLabel: 'project',
                   displayFilter: projectHasContent,
                   isEditor,
-                  openEntryId,
-                  setOpenEntryId,
                   ...sectionMoveHandlers,
-                  renderEntry: (p) => (
-                    <>
-                      <div className="flex justify-between">
-                        <div>
-                          <p className="text-[12px] font-semibold">
-                            {p.name || (
-                              <span className="italic text-slate-400">
-                                Project
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-[11px] text-slate-600">
-                            {p.role}
-                            {p.techStack ? ` • ${p.techStack}` : ''}
-                          </p>
-                        </div>
-                        {p.link &&
-                          renderExternalLink(
-                            p.link,
-                            p.link,
-                            'text-[11px] text-blue-600 break-all hover:underline',
-                          )}
-                      </div>
-                      {p.description && (
-                        <div className="mt-1 text-[11px] text-slate-700">
-                          <div className="cv-markdown">
-                            <ReactMarkdown
-                              skipHtml
-                              components={markdownComponents}
-                            >
-                              {preserveBlankLines(p.description)}
-                            </ReactMarkdown>
-                          </div>
-                        </div>
-                      )}
-                      {p.achievements && (
-                        <div className="mt-1 text-[11px] text-slate-700">
-                          <div className="cv-markdown">
-                            <ReactMarkdown
-                              skipHtml
-                              components={markdownComponents}
-                            >
-                              {preserveBlankLines(p.achievements)}
-                            </ReactMarkdown>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ),
+                  renderEntry: (p, update) =>
+                    renderProjectLike(p, update, isEditor, 'Project'),
                 }),
               );
             }
@@ -921,41 +1019,80 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                     date: '',
                     context: '',
                   }),
-                  FormComponent: AchievementForm,
-                  popoverTitle: 'Achievement',
-                  popoverWidth: 520,
                   addLabel: 'Add achievement',
+                  entryLabel: 'achievement',
                   displayFilter: achievementHasContent,
                   isEditor,
-                  openEntryId,
-                  setOpenEntryId,
                   ...sectionMoveHandlers,
-                  renderEntry: (a) => {
+                  renderEntry: (a, update) => {
                     const date = formatMonthForDisplay(a.date);
                     return (
                       <>
-                        <div className="flex justify-between">
-                          <div>
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
                             <p className="text-[12px] font-semibold">
-                              {a.name || (
-                                <span className="italic text-slate-400">
-                                  Award
-                                </span>
+                              {isEditor ? (
+                                <EditableText
+                                  value={a.name}
+                                  onChange={(value) =>
+                                    update({ ...a, name: value })
+                                  }
+                                  placeholder="Award name"
+                                  ariaLabel="Award name"
+                                />
+                              ) : (
+                                a.name
                               )}
                             </p>
                             <p className="text-[11px] text-slate-600">
-                              {a.organization}
+                              {isEditor ? (
+                                <EditableText
+                                  value={a.organization}
+                                  onChange={(value) =>
+                                    update({ ...a, organization: value })
+                                  }
+                                  placeholder="Organization"
+                                  ariaLabel="Organization"
+                                />
+                              ) : (
+                                a.organization
+                              )}
                             </p>
                           </div>
-                          {date && (
-                            <p className="text-[11px] text-slate-500">{date}</p>
+                          {isEditor ? (
+                            <div className="text-[11px] text-slate-500">
+                              <EditableMonth
+                                value={a.date}
+                                onChange={(value) =>
+                                  update({ ...a, date: value })
+                                }
+                                placeholder="Date"
+                                ariaLabel="Award date"
+                              />
+                            </div>
+                          ) : (
+                            date && (
+                              <p className="text-[11px] text-slate-500">
+                                {date}
+                              </p>
+                            )
                           )}
                         </div>
-                        {a.context && (
-                          <p className="mt-1 text-[11px] text-slate-700">
-                            {a.context}
-                          </p>
-                        )}
+                        <div className="mt-1 text-[11px] text-slate-700">
+                          {isEditor ? (
+                            <EditableText
+                              value={a.context}
+                              onChange={(value) =>
+                                update({ ...a, context: value })
+                              }
+                              multiline
+                              placeholder="Context (markdown)"
+                              ariaLabel="Context"
+                            />
+                          ) : (
+                            a.context && <p>{a.context}</p>
+                          )}
+                        </div>
                       </>
                     );
                   },
@@ -982,41 +1119,95 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                     coAuthors: '',
                     link: '',
                   }),
-                  FormComponent: PublicationForm,
-                  popoverTitle: 'Publication',
-                  popoverWidth: 520,
                   addLabel: 'Add publication',
+                  entryLabel: 'publication',
                   displayFilter: publicationHasContent,
                   isEditor,
-                  openEntryId,
-                  setOpenEntryId,
                   ...sectionMoveHandlers,
-                  renderEntry: (pub) => {
+                  renderEntry: (pub, update) => {
                     const publishedDate = formatMonthForDisplay(pub.year);
                     return (
                       <>
                         <p className="text-[12px] font-semibold">
-                          {pub.title || (
-                            <span className="italic text-slate-400">
-                              Publication
-                            </span>
+                          {isEditor ? (
+                            <EditableText
+                              value={pub.title}
+                              onChange={(value) =>
+                                update({ ...pub, title: value })
+                              }
+                              placeholder="Publication title"
+                              ariaLabel="Publication title"
+                            />
+                          ) : (
+                            pub.title
                           )}
                         </p>
                         <p className="text-[11px] text-slate-600">
-                          {pub.venue}
-                          {publishedDate ? ` • ${publishedDate}` : ''}
-                        </p>
-                        {pub.coAuthors && (
-                          <p className="text-[11px] text-slate-500">
-                            Co-authors: {pub.coAuthors}
-                          </p>
-                        )}
-                        {pub.link &&
-                          renderExternalLink(
-                            pub.link,
-                            pub.link,
-                            'text-[11px] text-blue-600 break-all hover:underline',
+                          {isEditor ? (
+                            <>
+                              <EditableText
+                                value={pub.venue}
+                                onChange={(value) =>
+                                  update({ ...pub, venue: value })
+                                }
+                                placeholder="Venue"
+                                ariaLabel="Venue"
+                              />
+                              {' • '}
+                              <EditableMonth
+                                value={pub.year}
+                                onChange={(value) =>
+                                  update({ ...pub, year: value })
+                                }
+                                placeholder="Year"
+                                ariaLabel="Publication year"
+                              />
+                            </>
+                          ) : (
+                            <>
+                              {pub.venue}
+                              {publishedDate ? ` • ${publishedDate}` : ''}
+                            </>
                           )}
+                        </p>
+                        {isEditor ? (
+                          <p className="text-[11px] text-slate-500">
+                            <EditableText
+                              value={pub.coAuthors}
+                              onChange={(value) =>
+                                update({ ...pub, coAuthors: value })
+                              }
+                              placeholder="Co-authors (optional)"
+                              ariaLabel="Co-authors"
+                            />
+                          </p>
+                        ) : (
+                          pub.coAuthors && (
+                            <p className="text-[11px] text-slate-500">
+                              Co-authors: {pub.coAuthors}
+                            </p>
+                          )
+                        )}
+                        <p className="text-[11px] text-blue-600 break-all">
+                          {isEditor ? (
+                            <EditableText
+                              value={pub.link}
+                              onChange={(value) =>
+                                update({ ...pub, link: value })
+                              }
+                              placeholder="https://"
+                              ariaLabel="Link"
+                              validate={validateOptionalUrl}
+                            />
+                          ) : (
+                            pub.link &&
+                            renderExternalLink(
+                              pub.link,
+                              pub.link,
+                              'text-[11px] text-blue-600 break-all hover:underline',
+                            )
+                          )}
+                        </p>
                       </>
                     );
                   },
@@ -1043,52 +1234,99 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                     role: '',
                     locationOrLink: '',
                   }),
-                  FormComponent: TalkForm,
-                  popoverTitle: 'Talk',
-                  popoverWidth: 520,
                   addLabel: 'Add talk',
+                  entryLabel: 'talk',
                   displayFilter: talkHasContent,
                   isEditor,
-                  openEntryId,
-                  setOpenEntryId,
                   ...sectionMoveHandlers,
-                  renderEntry: (talk) => {
+                  renderEntry: (talk, update) => {
                     const talkDate = formatMonthForDisplay(talk.date);
                     return (
                       <>
-                        <div className="flex justify-between">
-                          <div>
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
                             <p className="text-[12px] font-semibold">
-                              {talk.title || (
-                                <span className="italic text-slate-400">
-                                  Talk
-                                </span>
+                              {isEditor ? (
+                                <EditableText
+                                  value={talk.title}
+                                  onChange={(value) =>
+                                    update({ ...talk, title: value })
+                                  }
+                                  placeholder="Talk title"
+                                  ariaLabel="Talk title"
+                                />
+                              ) : (
+                                talk.title
                               )}
                             </p>
                             <p className="text-[11px] text-slate-600">
-                              {talk.event}
+                              {isEditor ? (
+                                <EditableText
+                                  value={talk.event}
+                                  onChange={(value) =>
+                                    update({ ...talk, event: value })
+                                  }
+                                  placeholder="Event / conference"
+                                  ariaLabel="Event"
+                                />
+                              ) : (
+                                talk.event
+                              )}
                             </p>
                           </div>
-                          {(talkDate || talk.role) && (
+                          {isEditor ? (
                             <p className="text-[11px] text-slate-500 text-right">
-                              {talk.role && `${talk.role}`}
-                              {talk.role && talkDate ? ' • ' : ''}
-                              {talkDate}
+                              <EditableText
+                                value={talk.role}
+                                onChange={(value) =>
+                                  update({ ...talk, role: value })
+                                }
+                                placeholder="Role"
+                                ariaLabel="Talk role"
+                              />
+                              {' • '}
+                              <EditableMonth
+                                value={talk.date}
+                                onChange={(value) =>
+                                  update({ ...talk, date: value })
+                                }
+                                placeholder="Date"
+                                ariaLabel="Talk date"
+                              />
                             </p>
+                          ) : (
+                            (talkDate || talk.role) && (
+                              <p className="text-[11px] text-slate-500 text-right">
+                                {talk.role && `${talk.role}`}
+                                {talk.role && talkDate ? ' • ' : ''}
+                                {talkDate}
+                              </p>
+                            )
                           )}
                         </div>
-                        {talk.locationOrLink &&
-                          (looksLikeUrl(talk.locationOrLink) ? (
-                            renderExternalLink(
-                              talk.locationOrLink,
-                              talk.locationOrLink,
-                              'text-[11px] text-blue-600 break-all hover:underline',
-                            )
+                        <p className="text-[11px] text-slate-500 break-all">
+                          {isEditor ? (
+                            <EditableText
+                              value={talk.locationOrLink}
+                              onChange={(value) =>
+                                update({ ...talk, locationOrLink: value })
+                              }
+                              placeholder="Location or link"
+                              ariaLabel="Location or link"
+                            />
                           ) : (
-                            <p className="text-[11px] text-slate-500 break-all">
-                              {talk.locationOrLink}
-                            </p>
-                          ))}
+                            talk.locationOrLink &&
+                            (looksLikeUrl(talk.locationOrLink) ? (
+                              renderExternalLink(
+                                talk.locationOrLink,
+                                talk.locationOrLink,
+                                'text-[11px] text-blue-600 break-all hover:underline',
+                              )
+                            ) : (
+                              talk.locationOrLink
+                            ))
+                          )}
+                        </p>
                       </>
                     );
                   },
@@ -1117,16 +1355,12 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                     isCurrent: false,
                     responsibilities: '',
                   }),
-                  FormComponent: VolunteerForm,
-                  popoverTitle: 'Volunteer experience',
-                  popoverWidth: 560,
                   addLabel: 'Add volunteer experience',
+                  entryLabel: 'volunteer entry',
                   displayFilter: volunteerHasContent,
                   isEditor,
-                  openEntryId,
-                  setOpenEntryId,
                   ...sectionMoveHandlers,
-                  renderEntry: (v) => {
+                  renderEntry: (v, update) => {
                     const startDate = formatMonthForDisplay(v.startDate);
                     const endDate = v.isCurrent
                       ? 'Present'
@@ -1134,33 +1368,113 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                     const hasRange = Boolean(startDate || endDate);
                     return (
                       <>
-                        <div className="flex justify-between">
-                          <div>
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
                             <p className="text-[12px] font-semibold">
-                              {v.role || (
-                                <span className="italic text-slate-400">
-                                  Volunteer role
-                                </span>
+                              {isEditor ? (
+                                <EditableText
+                                  value={v.role}
+                                  onChange={(value) =>
+                                    update({ ...v, role: value })
+                                  }
+                                  placeholder="Volunteer role"
+                                  ariaLabel="Volunteer role"
+                                />
+                              ) : (
+                                v.role
                               )}
                             </p>
                             <p className="text-[11px] text-slate-600">
-                              {v.organization}
-                              {v.location ? ` • ${v.location}` : ''}
+                              {isEditor ? (
+                                <>
+                                  <EditableText
+                                    value={v.organization}
+                                    onChange={(value) =>
+                                      update({ ...v, organization: value })
+                                    }
+                                    placeholder="Organization"
+                                    ariaLabel="Organization"
+                                  />
+                                  {' • '}
+                                  <EditableText
+                                    value={v.location}
+                                    onChange={(value) =>
+                                      update({ ...v, location: value })
+                                    }
+                                    placeholder="Location"
+                                    ariaLabel="Location"
+                                  />
+                                </>
+                              ) : (
+                                <>
+                                  {v.organization}
+                                  {v.location ? ` • ${v.location}` : ''}
+                                </>
+                              )}
                             </p>
                           </div>
-                          {hasRange && (
-                            <p className="text-[11px] text-slate-500">
-                              {startDate}
-                              {(endDate || v.isCurrent) && ' – '}
-                              {endDate}
-                            </p>
+                          {isEditor ? (
+                            <div className="flex flex-col items-end gap-1 text-[11px] text-slate-500">
+                              <div className="flex items-center gap-1">
+                                <EditableMonth
+                                  value={v.startDate}
+                                  onChange={(value) =>
+                                    update({ ...v, startDate: value })
+                                  }
+                                  placeholder="Start"
+                                  ariaLabel="Start date"
+                                />
+                                <span> – </span>
+                                <EditableMonth
+                                  value={v.endDate}
+                                  onChange={(value) =>
+                                    update({ ...v, endDate: value })
+                                  }
+                                  placeholder={
+                                    v.isCurrent ? 'Present' : 'End'
+                                  }
+                                  ariaLabel="End date"
+                                  disabled={v.isCurrent}
+                                />
+                              </div>
+                              <EditableToggle
+                                checked={v.isCurrent}
+                                onChange={(checked) =>
+                                  update({
+                                    ...v,
+                                    isCurrent: checked,
+                                    endDate: checked ? '' : v.endDate,
+                                  })
+                                }
+                                label="Ongoing"
+                                ariaLabel="Volunteering ongoing"
+                              />
+                            </div>
+                          ) : (
+                            hasRange && (
+                              <p className="text-[11px] text-slate-500">
+                                {startDate}
+                                {(endDate || v.isCurrent) && ' – '}
+                                {endDate}
+                              </p>
+                            )
                           )}
                         </div>
-                        {v.responsibilities && (
-                          <p className="mt-1 text-[11px] text-slate-700 whitespace-pre-line">
-                            {v.responsibilities}
-                          </p>
-                        )}
+                        <div className="mt-1 text-[11px] text-slate-700 whitespace-pre-line">
+                          {isEditor ? (
+                            <EditableText
+                              value={v.responsibilities}
+                              onChange={(value) =>
+                                update({ ...v, responsibilities: value })
+                              }
+                              multiline
+                              placeholder="Responsibilities (markdown)"
+                              ariaLabel="Responsibilities"
+                            />
+                          ) : (
+                            v.responsibilities && <span>{v.responsibilities}</span>
+                          )}
+                        </div>
                       </>
                     );
                   },
@@ -1188,64 +1502,13 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                     achievements: '',
                     link: '',
                   }),
-                  FormComponent: ProjectForm,
-                  popoverTitle: 'Open source contribution',
-                  popoverWidth: 560,
                   addLabel: 'Add contribution',
+                  entryLabel: 'contribution',
                   displayFilter: projectHasContent,
                   isEditor,
-                  openEntryId,
-                  setOpenEntryId,
                   ...sectionMoveHandlers,
-                  renderEntry: (c) => (
-                    <>
-                      <div className="flex justify-between">
-                        <div>
-                          <p className="text-[12px] font-semibold">
-                            {c.name || (
-                              <span className="italic text-slate-400">
-                                Project
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-[11px] text-slate-600">
-                            {c.role}
-                            {c.techStack ? ` • ${c.techStack}` : ''}
-                          </p>
-                        </div>
-                        {c.link &&
-                          renderExternalLink(
-                            c.link,
-                            c.link,
-                            'text-[11px] text-blue-600 break-all hover:underline',
-                          )}
-                      </div>
-                      {c.description && (
-                        <div className="mt-1 text-[11px] text-slate-700">
-                          <div className="cv-markdown">
-                            <ReactMarkdown
-                              skipHtml
-                              components={markdownComponents}
-                            >
-                              {preserveBlankLines(c.description)}
-                            </ReactMarkdown>
-                          </div>
-                        </div>
-                      )}
-                      {c.achievements && (
-                        <div className="mt-1 text-[11px] text-slate-700">
-                          <div className="cv-markdown">
-                            <ReactMarkdown
-                              skipHtml
-                              components={markdownComponents}
-                            >
-                              {preserveBlankLines(c.achievements)}
-                            </ReactMarkdown>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ),
+                  renderEntry: (c, update) =>
+                    renderProjectLike(c, update, isEditor, 'Project'),
                 }),
               );
             }
@@ -1265,23 +1528,38 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                     id: generateId(),
                     name: '',
                   }),
-                  FormComponent: SkillForm,
-                  popoverTitle: 'Skill',
-                  popoverWidth: 360,
                   addLabel: 'Add skill',
+                  entryLabel: 'skill',
                   displayFilter: skillHasContent,
                   isEditor,
-                  openEntryId,
-                  setOpenEntryId,
                   ...sectionMoveHandlers,
-                  renderEntry: (skill) => (
-                    <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px]">
-                      {skill.name || (
-                        <span className="italic text-slate-400">Skill</span>
-                      )}
-                      {skill.level ? ` – ${skill.level}` : ''}
-                    </span>
-                  ),
+                  renderEntry: (skill, update) =>
+                    isEditor ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px]">
+                        <EditableText
+                          value={skill.name}
+                          onChange={(value) =>
+                            update({ ...skill, name: value })
+                          }
+                          placeholder="Skill"
+                          ariaLabel="Skill name"
+                        />
+                        <span>–</span>
+                        <EditableSelect<SkillLevel>
+                          value={skill.level}
+                          options={SKILL_LEVEL_OPTIONS}
+                          onChange={(level) => update({ ...skill, level })}
+                          placeholder="Level"
+                          ariaLabel="Skill level"
+                          allowEmpty
+                        />
+                      </span>
+                    ) : (
+                      <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px]">
+                        {skill.name}
+                        {skill.level ? ` – ${skill.level}` : ''}
+                      </span>
+                    ),
                 }),
               );
             }
@@ -1302,23 +1580,41 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                     name: '',
                     level: 'Professional' as const,
                   }),
-                  FormComponent: LanguageForm,
-                  popoverTitle: 'Language',
-                  popoverWidth: 360,
                   addLabel: 'Add language',
+                  entryLabel: 'language',
                   displayFilter: languageHasContent,
                   isEditor,
-                  openEntryId,
-                  setOpenEntryId,
                   ...sectionMoveHandlers,
-                  renderEntry: (language) => (
-                    <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px]">
-                      {language.name || (
-                        <span className="italic text-slate-400">Language</span>
-                      )}{' '}
-                      – {language.level}
-                    </span>
-                  ),
+                  renderEntry: (language, update) =>
+                    isEditor ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px]">
+                        <EditableText
+                          value={language.name}
+                          onChange={(value) =>
+                            update({ ...language, name: value })
+                          }
+                          placeholder="Language"
+                          ariaLabel="Language name"
+                        />
+                        <span>–</span>
+                        <EditableSelect<LanguageLevel>
+                          value={language.level}
+                          options={LANGUAGE_LEVEL_OPTIONS}
+                          onChange={(level) =>
+                            update({
+                              ...language,
+                              level: level ?? 'Professional',
+                            })
+                          }
+                          placeholder="Level"
+                          ariaLabel="Language level"
+                        />
+                      </span>
+                    ) : (
+                      <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px]">
+                        {language.name} – {language.level}
+                      </span>
+                    ),
                 }),
               );
             }
@@ -1333,7 +1629,6 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                   sectionId: id,
                   sectionIndex,
                   sectionsOrderLength: sectionsOrder.length,
-                  title: section.title || 'Custom section',
                   entries: [section],
                   onUpdateEntries: (next) => {
                     const updated = next[0];
@@ -1346,16 +1641,41 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                     });
                   },
                   createEmpty: () => ({ id: generateId(), title: '', body: '' }),
-                  FormComponent: CustomBodyForm,
-                  popoverTitle: 'Custom section',
-                  popoverWidth: 520,
                   addLabel: 'Add entry',
+                  entryLabel: 'custom section body',
                   isEditor,
-                  openEntryId,
-                  setOpenEntryId,
                   ...sectionMoveHandlers,
-                  renderEntry: (s) =>
-                    s.body ? (
+                  title: isEditor ? (
+                    <EditableText
+                      value={section.title}
+                      onChange={(value) => {
+                        editor?.onUpdate({
+                          ...cv,
+                          customSections: cv.customSections.map((existing) =>
+                            existing.id === section.id
+                              ? { ...existing, title: value }
+                              : existing,
+                          ),
+                        });
+                      }}
+                      placeholder="Custom section"
+                      ariaLabel="Section title"
+                    />
+                  ) : (
+                    section.title || 'Custom section'
+                  ),
+                  renderEntry: (s, update) =>
+                    isEditor ? (
+                      <div className="text-[11px] text-slate-700">
+                        <EditableText
+                          value={s.body}
+                          onChange={(value) => update({ ...s, body: value })}
+                          multiline
+                          placeholder="Body (markdown)"
+                          ariaLabel="Custom section body"
+                        />
+                      </div>
+                    ) : s.body ? (
                       <div className="text-[11px] text-slate-700">
                         <div className="cv-markdown">
                           <ReactMarkdown skipHtml components={markdownComponents}>
@@ -1363,11 +1683,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                           </ReactMarkdown>
                         </div>
                       </div>
-                    ) : (
-                      <p className="italic text-[11px] text-slate-400">
-                        Click the pencil to add content.
-                      </p>
-                    ),
+                    ) : null,
                 }),
               );
             }
@@ -1383,39 +1699,6 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
             />
           )}
         </div>
-      </div>
-    </div>
-
-      <div className="mt-2 flex items-center justify-between text-[11px] text-slate-600 print:hidden">
-        <button
-          type="button"
-          onClick={() => setPageIndex((prev) => Math.max(prev - 1, 0))}
-          disabled={pageIndex === 0}
-          className={`rounded-md border px-3 py-1 font-medium ${
-            pageIndex === 0
-              ? 'cursor-not-allowed border-slate-200 text-slate-400 bg-white'
-              : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
-          }`}
-        >
-          Previous
-        </button>
-        <span className="font-medium text-slate-700">
-          Page {Math.min(pageIndex + 1, totalPages)} / {totalPages}
-        </span>
-        <button
-          type="button"
-          onClick={() =>
-            setPageIndex((prev) => Math.min(prev + 1, totalPages - 1))
-          }
-          disabled={pageIndex >= totalPages - 1}
-          className={`rounded-md border px-3 py-1 font-medium ${
-            pageIndex >= totalPages - 1
-              ? 'cursor-not-allowed border-slate-200 text-slate-400 bg-white'
-              : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
-          }`}
-        >
-          Next
-        </button>
       </div>
     </div>
   );

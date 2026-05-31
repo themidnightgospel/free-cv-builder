@@ -17,8 +17,10 @@ test.describe('Editor — personal info inline editing', () => {
   });
 
   test('editing job title persists after blur', async ({ page }) => {
-    await page.getByRole('button', { name: 'Job title' }).click();
-    const input = page.getByRole('textbox', { name: 'Job title' });
+    // Personal header's job title comes first in the document. Section entries
+    // also expose an aria-labelled "Job title" — scope to the first match.
+    await page.getByRole('button', { name: 'Job title' }).first().click();
+    const input = page.getByRole('textbox', { name: 'Job title' }).first();
     await input.fill('Mathematician');
     await input.blur();
     await expect(
@@ -54,6 +56,41 @@ test.describe('Editor — personal info inline editing', () => {
     expect(overflow).not.toBe('ellipsis');
   });
 
+  test('Professional Summary is editable inline from an empty CV', async ({
+    page,
+  }) => {
+    const summarySection = page
+      .locator('section')
+      .filter({
+        has: page.getByRole('heading', { name: 'Professional Summary' }),
+      })
+      .first();
+    await expect(summarySection).toBeVisible();
+    await summarySection
+      .getByRole('button', { name: 'Professional summary' })
+      .click();
+    await page
+      .getByRole('textbox', { name: 'Professional summary' })
+      .fill('Senior Engineer with 10 years building reliable systems.');
+    await page.keyboard.press('Escape');
+    // Escape cancels — so re-open and use Ctrl+Enter / blur to commit.
+    await summarySection
+      .getByRole('button', { name: 'Professional summary' })
+      .click();
+    const textbox = page.getByRole('textbox', {
+      name: 'Professional summary',
+    });
+    await textbox.fill(
+      'Senior Engineer with 10 years building reliable systems.',
+    );
+    await textbox.blur();
+    await expect(
+      summarySection.getByText(
+        /Senior Engineer with 10 years building reliable systems\./,
+      ),
+    ).toBeVisible();
+  });
+
   test('email field shows wavy validation underline for invalid value', async ({
     page,
   }) => {
@@ -73,16 +110,32 @@ test.describe('Editor — entries', () => {
     await page.getByRole('button', { name: /Create new CV/i }).click();
   });
 
-  test('add experience entry through popover', async ({ page }) => {
+  test('add experience entry inline', async ({ page }) => {
     await page.getByRole('button', { name: /\+ Add experience/i }).click();
-    const popover = page.locator('[role="dialog"]');
-    await expect(popover).toBeVisible();
-    await popover.getByLabel('Job title').fill('Staff Engineer');
-    await popover.getByLabel('Company').fill('Acme Corp');
-    await popover.getByLabel('Description (markdown supported)').fill(
-      '- Led migrations\n- Mentored team',
-    );
-    await page.keyboard.press('Escape');
+    // Editing is now fully inline — no popover should appear.
+    await expect(page.locator('[role="dialog"]')).toHaveCount(0);
+
+    // The new empty entry is the last one in the Experience section.
+    const titleField = page
+      .getByRole('button', { name: 'Job title' })
+      .last();
+    await titleField.click();
+    await page
+      .getByRole('textbox', { name: 'Job title' })
+      .last()
+      .fill('Staff Engineer');
+    await page.keyboard.press('Enter');
+
+    const companyField = page
+      .getByRole('button', { name: 'Company' })
+      .last();
+    await companyField.click();
+    await page
+      .getByRole('textbox', { name: 'Company' })
+      .last()
+      .fill('Acme Corp');
+    await page.keyboard.press('Enter');
+
     await expect(
       page.getByText('Staff Engineer', { exact: true }).first(),
     ).toBeVisible();
@@ -91,23 +144,102 @@ test.describe('Editor — entries', () => {
     ).toBeVisible();
   });
 
-  test('add a skill and a language', async ({ page }) => {
-    await page.getByRole('button', { name: /\+ Add skill/i }).click();
-    await expect(page.locator('[role="dialog"]')).toBeVisible();
+  test('no popover dialog ever appears for an entry edit', async ({
+    page,
+  }) => {
+    await page.getByRole('button', { name: /\+ Add experience/i }).click();
+    await page.getByRole('button', { name: 'Job title' }).last().click();
+    await expect(page.locator('[role="dialog"]')).toHaveCount(0);
     await page
-      .locator('[role="dialog"]')
-      .getByLabel('Skill', { exact: true })
+      .getByRole('textbox', { name: 'Job title' })
+      .last()
+      .fill('Lead Engineer');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('[role="dialog"]')).toHaveCount(0);
+    await expect(
+      page.getByText('Lead Engineer', { exact: true }).first(),
+    ).toBeVisible();
+  });
+
+  test('deleting an entry asks for confirmation', async ({ page }) => {
+    const experienceSection = page
+      .locator('section')
+      .filter({ has: page.getByRole('heading', { name: 'Experience' }) })
+      .first();
+    await experienceSection
+      .getByRole('button', { name: /\+ Add experience/i })
+      .click();
+    await experienceSection
+      .getByRole('button', { name: 'Job title' })
+      .last()
+      .click();
+    await experienceSection
+      .getByRole('textbox', { name: 'Job title' })
+      .last()
+      .fill('Doomed Engineer');
+    await page.keyboard.press('Enter');
+    await expect(
+      experienceSection.getByText('Doomed Engineer', { exact: true }),
+    ).toBeVisible();
+
+    // The entry's delete chrome is the LAST "Delete" button inside the section.
+    await experienceSection
+      .getByText('Doomed Engineer', { exact: true })
+      .hover();
+    await experienceSection
+      .getByRole('button', { name: 'Delete' })
+      .last()
+      .click();
+    await expect(
+      page.getByRole('heading', { name: /Delete this item\?/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Delete this experience entry/i),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await expect(
+      experienceSection.getByText('Doomed Engineer', { exact: true }),
+    ).toBeVisible();
+
+    await experienceSection
+      .getByText('Doomed Engineer', { exact: true })
+      .hover();
+    await experienceSection
+      .getByRole('button', { name: 'Delete' })
+      .last()
+      .click();
+    // The confirm CTA is the last "Delete" button rendered (dialog mounts after chrome).
+    await page
+      .getByRole('button', { name: 'Delete', exact: true })
+      .last()
+      .click();
+    await expect(
+      page.getByText('Doomed Engineer', { exact: true }),
+    ).toHaveCount(0);
+  });
+
+  test('add a skill and a language inline', async ({ page }) => {
+    await page.getByRole('button', { name: /\+ Add skill/i }).click();
+    await expect(page.locator('[role="dialog"]')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Skill name' }).last().click();
+    await page
+      .getByRole('textbox', { name: 'Skill name' })
+      .last()
       .fill('TypeScript');
-    await page.keyboard.press('Escape');
+    await page.keyboard.press('Enter');
     await expect(page.getByText('TypeScript').first()).toBeVisible();
 
     await page.getByRole('button', { name: /\+ Add language/i }).click();
-    await expect(page.locator('[role="dialog"]')).toBeVisible();
+    await expect(page.locator('[role="dialog"]')).toHaveCount(0);
     await page
-      .locator('[role="dialog"]')
-      .getByLabel('Language', { exact: true })
+      .getByRole('button', { name: 'Language name' })
+      .last()
+      .click();
+    await page
+      .getByRole('textbox', { name: 'Language name' })
+      .last()
       .fill('English');
-    await page.keyboard.press('Escape');
+    await page.keyboard.press('Enter');
     await expect(page.getByText(/English/).first()).toBeVisible();
   });
 });

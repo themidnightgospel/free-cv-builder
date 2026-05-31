@@ -11,30 +11,28 @@ interface RenderEditableSectionArgs<T extends EntryWithId> {
   sectionId: SectionId;
   sectionIndex: number;
   sectionsOrderLength: number;
-  title: string;
+  title: React.ReactNode;
   entries: T[];
   /** Replaces the entries array with the given one. */
   onUpdateEntries: (next: T[]) => void;
   /** Build a new empty entry. The id should be unique. */
   createEmpty: () => T;
-  FormComponent: React.ComponentType<{
-    value: T;
-    onChange: (next: T) => void;
-  }>;
-  popoverTitle: string;
-  popoverWidth?: number;
-  /** Render the read-only display markup for an entry. */
-  renderEntry: (entry: T) => React.ReactNode;
+  /** Render the entry; in editor mode the caller should render inline editable
+   *  primitives directly and call onUpdate to persist field changes. */
+  renderEntry: (entry: T, onUpdate: (next: T) => void) => React.ReactNode;
   /** When not in editor mode, hide entries that don't satisfy this. */
   displayFilter?: (entry: T) => boolean;
   /** "Add experience", "Add education", etc. */
   addLabel: string;
+  /** Singular label of a single entry (e.g. "experience"). Used by the
+   *  delete confirmation prompt. */
+  entryLabel?: string;
   /** Editor flags from the parent CvPreview. */
   isEditor: boolean;
-  openEntryId: string | null;
-  setOpenEntryId: (id: string | null) => void;
   onMoveSection?: (sectionId: SectionId, direction: -1 | 1) => void;
   onRemoveSection?: (sectionId: SectionId) => void;
+  /** Resolves to true if the user confirmed; false otherwise. */
+  confirmDelete?: (message: string) => Promise<boolean>;
 }
 
 export function renderEditableSection<T extends EntryWithId>(
@@ -48,17 +46,14 @@ export function renderEditableSection<T extends EntryWithId>(
     entries,
     onUpdateEntries,
     createEmpty,
-    FormComponent,
-    popoverTitle,
-    popoverWidth = 560,
     renderEntry,
     displayFilter,
     addLabel,
+    entryLabel,
     isEditor,
-    openEntryId,
-    setOpenEntryId,
     onMoveSection,
     onRemoveSection,
+    confirmDelete,
   } = args;
 
   const visible = isEditor
@@ -67,24 +62,23 @@ export function renderEditableSection<T extends EntryWithId>(
     ? entries.filter(displayFilter)
     : entries;
 
-  const sectionControls = isEditor && onMoveSection && onRemoveSection
-    ? {
-        editable: true,
-        onMoveUp: () => onMoveSection(sectionId, -1),
-        onMoveDown: () => onMoveSection(sectionId, 1),
-        onDelete: () => onRemoveSection(sectionId),
-        // First slot is personal; first movable section is sectionIndex 1.
-        canMoveUp: sectionIndex > 1,
-        canMoveDown: sectionIndex < sectionsOrderLength - 1,
-      }
-    : undefined;
+  const sectionControls =
+    isEditor && onMoveSection && onRemoveSection
+      ? {
+          editable: true,
+          onMoveUp: () => onMoveSection(sectionId, -1),
+          onMoveDown: () => onMoveSection(sectionId, 1),
+          onDelete: () => onRemoveSection(sectionId),
+          canMoveUp: sectionIndex > 1,
+          canMoveDown: sectionIndex < sectionsOrderLength - 1,
+        }
+      : undefined;
 
   const total = entries.length;
 
   const handleAdd = () => {
     const newEntry = createEmpty();
     onUpdateEntries([...entries, newEntry]);
-    setOpenEntryId(newEntry.id);
   };
 
   return (
@@ -93,14 +87,21 @@ export function renderEditableSection<T extends EntryWithId>(
       <div className="space-y-2">
         {visible.map((entry, idx) => {
           if (!isEditor) {
-            return <div key={entry.id}>{renderEntry(entry)}</div>;
+            return <div key={entry.id}>{renderEntry(entry, () => {})}</div>;
           }
-          const handleSave = (updated: T) => {
+          const handleUpdate = (updated: T) => {
             onUpdateEntries(
               entries.map((it) => (it.id === entry.id ? updated : it)),
             );
           };
-          const handleDelete = () => {
+          const handleDelete = async () => {
+            if (confirmDelete) {
+              const label = entryLabel ?? 'item';
+              const ok = await confirmDelete(
+                `Delete this ${label}? This cannot be undone.`,
+              );
+              if (!ok) return;
+            }
             onUpdateEntries(entries.filter((it) => it.id !== entry.id));
           };
           const moveByDelta = (delta: -1 | 1) => {
@@ -114,20 +115,13 @@ export function renderEditableSection<T extends EntryWithId>(
           return (
             <EditableEntry
               key={entry.id}
-              entry={entry}
-              onSave={handleSave}
               onDelete={handleDelete}
               onMoveUp={() => moveByDelta(-1)}
               onMoveDown={() => moveByDelta(1)}
               canMoveUp={idx > 0}
               canMoveDown={idx < total - 1}
-              FormComponent={FormComponent}
-              popoverTitle={popoverTitle}
-              popoverWidth={popoverWidth}
-              isOpen={openEntryId === entry.id}
-              onOpenChange={(open) => setOpenEntryId(open ? entry.id : null)}
             >
-              {renderEntry(entry)}
+              {renderEntry(entry, handleUpdate)}
             </EditableEntry>
           );
         })}

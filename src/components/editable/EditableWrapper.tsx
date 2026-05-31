@@ -44,7 +44,8 @@ export const EditableWrapper: React.FC<EditableWrapperProps> = ({
         aria-hidden
         className="pointer-events-none absolute -inset-1.5 rounded-md ring-1 ring-transparent transition group-hover:bg-accent/[0.04] group-hover:ring-accent/30"
       />
-      {/* Floating control cluster — always interactive so clicks survive the hover gap between entry and cluster. */}
+      {/* Floating control cluster — absolute, zero layout height so builder
+          pagination matches the PDF exactly. */}
       <div className="absolute -top-3 right-0 z-10 flex items-center gap-0.5 rounded-full border border-slate-200 bg-paper px-1 py-0.5 opacity-0 shadow-soft transition group-hover:opacity-100 hover:opacity-100 focus-within:opacity-100">
         {onMoveUp && (
           <button

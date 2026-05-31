@@ -15,7 +15,9 @@ test.describe('Section management', () => {
     }
   });
 
-  test('removing a section hides it from the preview', async ({ page }) => {
+  test('removing a section asks for confirmation and includes the item count', async ({
+    page,
+  }) => {
     const experienceSection = page
       .locator('section')
       .filter({ has: page.getByRole('heading', { name: 'Experience' }) })
@@ -24,9 +26,35 @@ test.describe('Section management', () => {
     await experienceSection
       .getByRole('button', { name: /Delete section/i })
       .click();
+    // Confirm dialog appears, mentions the section and the entire-section copy.
+    await expect(
+      page.getByRole('heading', { name: /Delete Experience section\?/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/entire Experience section/i),
+    ).toBeVisible();
+    await expect(page.getByText(/item|items/)).toBeVisible();
+    // Two buttons named "Delete section": the chrome trigger and the confirm
+    // CTA. The confirm CTA is the second.
+    await page.getByRole('button', { name: 'Delete section' }).last().click();
     await expect(
       page.getByRole('heading', { name: 'Experience', exact: true }),
     ).toHaveCount(0);
+  });
+
+  test('cancelling the confirmation keeps the section', async ({ page }) => {
+    const experienceSection = page
+      .locator('section')
+      .filter({ has: page.getByRole('heading', { name: 'Experience' }) })
+      .first();
+    await experienceSection.hover();
+    await experienceSection
+      .getByRole('button', { name: /Delete section/i })
+      .click();
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Experience', exact: true }),
+    ).toBeVisible();
   });
 
   test('moving Education up changes section order', async ({ page }) => {
