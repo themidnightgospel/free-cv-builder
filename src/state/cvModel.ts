@@ -30,11 +30,6 @@ export const createEmptyPersonalInfo = (): PersonalInfo => ({
   photoDataUrl: null,
 });
 
-export const stripCvPhoto = (cv: CvData): CvData => ({
-  ...cv,
-  personalInfo: { ...cv.personalInfo, photoDataUrl: null },
-});
-
 export const createEmptyExperience = (): ExperienceEntry => ({
   id: generateId(),
   jobTitle: '',

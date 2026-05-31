@@ -143,7 +143,7 @@ export const App: React.FC = () => {
         setCurrentCvId(match.id);
         persistCurrentCvId(match.id);
         setMode('editor');
-            setShowValidationModal(false);
+        setShowValidationModal(false);
         setValidationErrors([]);
       }
     }
@@ -339,7 +339,7 @@ export const App: React.FC = () => {
 
   const onInsertSectionAt = (afterIndex: number, optionId: string) => {
     if (optionId === 'custom') {
-      const id = crypto.randomUUID();
+      const id = generateId();
       setCv((prev) => {
         const order = [...prev.sectionsOrder];
         order.splice(afterIndex + 1, 0, `custom:${id}` as SectionId);
@@ -487,25 +487,6 @@ export const App: React.FC = () => {
             {isPreparingPdf ? 'Preparing…' : 'Download PDF'}
           </button>
         </div>
-        {importError && (
-          <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/30">
-            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
-              <h2 className="mb-2 text-base font-semibold text-slate-900">
-                Cannot load CV from PDF
-              </h2>
-              <p className="mb-4 text-sm text-slate-600">{importError}</p>
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700"
-                  onClick={() => setImportError(null)}
-                >
-                  OK
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </header>
   );
@@ -830,25 +811,7 @@ export const App: React.FC = () => {
         )}
 
         {/* Import error modal */}
-        {importError && (
-          <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/30">
-            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
-              <h2 className="mb-2 text-base font-semibold text-slate-900">
-                Cannot load CV from PDF
-              </h2>
-              <p className="mb-4 text-sm text-slate-600">{importError}</p>
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700"
-                  onClick={() => setImportError(null)}
-                >
-                  OK
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {importErrorModal}
 
       </main>
       </div>

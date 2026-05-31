@@ -548,8 +548,6 @@ const parsePillEntries = (
   const text = lines.join(' ').replace(/\s+/g, ' ').trim();
   if (!text) return [];
   // Split on dash patterns. Each pill becomes "Name – Level".
-  const tokens = text.split(/(?:\s{2,}|\s(?=[A-Z]))/);
-  // Above is brittle. Better: split by " – " then handle words.
   const pieces = text.split(/\s+–\s+|\s+-\s+/);
   // pieces[0]=name1, pieces[1]=level1 name2, pieces[2]=level2 name3, ...
   const result: { name: string; level: string }[] = [];
@@ -572,7 +570,6 @@ const parsePillEntries = (
     }
   }
   return result.filter((entry) => entry.name);
-  void tokens;
 };
 
 const parseSkills = (lines: string[]): Skill[] =>
