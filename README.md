@@ -22,7 +22,9 @@
 </p>
 
 <p align="center">
-  <img src="demo/demo.gif" alt="Free CV Builder walkthrough" width="900" />
+  <video src="demo/demo.mp4" autoplay loop muted playsinline width="900">
+    <img src="demo/demo.gif" alt="Free CV Builder walkthrough" width="900" />
+  </video>
 </p>
 
 ---
