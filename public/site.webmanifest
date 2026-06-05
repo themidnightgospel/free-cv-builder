@@ -1,0 +1,17 @@
+{
+  "name": "Free CV Builder",
+  "short_name": "Free CV",
+  "description": "Build a clean professional CV in your browser. Free, no signup, no tracking, no watermarks.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FBFAF8",
+  "theme_color": "#3F7A55",
+  "icons": [
+    {
+      "src": "/cv-logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    }
+  ]
+}
