@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Open source MIT CV builder — buildmyfree.cv</title>
+    <meta name="description" content="Free CV Builder is open source under MIT. Self-host it, contribute, or just trust the code." />
+    <link rel="canonical" href="https://buildmyfree.cv/open-source/" />
+    <meta name="theme-color" content="#3F7A55" />
+
+    <link rel="icon" type="image/svg+xml" href="/cv-logo.svg" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Free CV Builder" />
+    <meta property="og:title" content="Open source MIT CV builder — buildmyfree.cv" />
+    <meta property="og:description" content="Free CV Builder is open source under MIT. Self-host it, contribute, or just trust the code." />
+    <meta property="og:url" content="https://buildmyfree.cv/open-source/" />
+    <meta property="og:image" content="https://buildmyfree.cv/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Open source MIT CV builder — buildmyfree.cv" />
+    <meta name="twitter:description" content="Free CV Builder is open source under MIT. Self-host it, contribute, or just trust the code." />
+    <meta name="twitter:image" content="https://buildmyfree.cv/og.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --canvas: #fbfaf8;
+        --paper: #ffffff;
+        --ink: #1a1a1a;
+        --muted: #6b6862;
+        --accent: #3f7a55;
+        --accent-dark: #2d5a3e;
+        --border: #ebe7dd;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--canvas);
+        color: var(--ink);
+        font-family: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+        font-size: 16px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      a { color: var(--accent); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+      a:hover { color: var(--accent-dark); }
+      header.site {
+        position: sticky; top: 0; z-index: 10;
+        background: rgba(251, 250, 248, 0.85);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid var(--border);
+      }
+      header.site .inner {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 14px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      header.site a.brand {
+        display: inline-flex; align-items: center; gap: 10px;
+        color: var(--ink); text-decoration: none; font-weight: 600;
+      }
+      header.site a.brand img { width: 24px; height: 24px; }
+      header.site a.back {
+        color: var(--muted); font-size: 13px; text-decoration: none;
+      }
+      header.site a.back:hover { color: var(--ink); }
+      main.page {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 48px 24px 32px;
+      }
+      main.page h1 {
+        font-size: 40px; line-height: 1.1; letter-spacing: -0.02em;
+        font-weight: 600; margin: 0 0 8px;
+      }
+      main.page .lede {
+        color: var(--muted); font-size: 18px; margin: 0 0 32px;
+      }
+      main.page h2 {
+        font-size: 22px; line-height: 1.3; font-weight: 600;
+        margin: 40px 0 12px;
+      }
+      main.page h3 {
+        font-size: 17px; line-height: 1.4; font-weight: 600;
+        margin: 28px 0 8px;
+      }
+      main.page p { margin: 0 0 16px; }
+      main.page ul, main.page ol { margin: 0 0 16px; padding-left: 24px; }
+      main.page li { margin-bottom: 6px; }
+      main.page code {
+        background: #f5f2ec; padding: 1px 6px; border-radius: 4px;
+        font-size: 0.92em;
+      }
+      main.page pre {
+        background: #1f1e1b; color: #f5f2ec; padding: 16px; border-radius: 8px;
+        overflow-x: auto; font-size: 14px; line-height: 1.5;
+      }
+      main.page pre code { background: transparent; padding: 0; color: inherit; }
+      main.page blockquote {
+        border-left: 3px solid var(--accent);
+        padding: 4px 16px; margin: 16px 0; color: var(--muted);
+      }
+      main.page hr { border: 0; border-top: 1px solid var(--border); margin: 40px 0; }
+      footer.site {
+        max-width: 720px; margin: 0 auto;
+        padding: 32px 24px 48px;
+        border-top: 1px solid var(--border);
+        color: var(--muted); font-size: 13px;
+      }
+      footer.site .nav {
+        display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px;
+      }
+      footer.site .nav a { color: var(--ink); text-decoration: none; font-weight: 500; }
+      footer.site .nav a:hover { color: var(--accent); }
+      footer.site .cta {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: var(--ink); color: var(--paper);
+        padding: 10px 18px; border-radius: 999px;
+        text-decoration: none; font-weight: 500; font-size: 13px;
+        margin-top: 4px;
+      }
+      footer.site .cta:hover { background: var(--accent-dark); color: var(--paper); }
+    </style>
+
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Open source MIT CV builder — buildmyfree.cv",
+  "headline": "Open source",
+  "description": "Free CV Builder is open source under MIT. Self-host it, contribute, or just trust the code.",
+  "url": "https://buildmyfree.cv/open-source/",
+  "inLanguage": "en"
+}
+    </script>
+  </head>
+  <body>
+    <header class="site">
+      <div class="inner">
+        <a class="brand" href="/">
+          <img src="/cv-logo.svg" alt="" />
+          <span>Free CV Builder</span>
+        </a>
+        <a class="back" href="/">← Back to builder</a>
+      </div>
+    </header>
+
+    <main class="page">
+      <h1>Open source</h1>
+      <p class="lede">MIT licensed. Self-hostable. Code you can read.</p>
+      <h2>Why open source matters here</h2>
+<p>Most CV builders are closed-source SaaS. You upload your résumé to a stranger&#39;s server and trust the marketing copy on the privacy page.</p>
+<p>Free CV Builder is the opposite. The entire app is a static site you can read end-to-end. The &quot;we don&#39;t collect your data&quot; claim is verifiable because you can grep the code for <code>fetch</code> and see what we send. Spoiler: nothing.</p>
+<h2>The repository</h2>
+<p><strong><a href="https://github.com/themidnightgospel/free-cv-builder">github.com/themidnightgospel/free-cv-builder</a></strong></p>
+<ul>
+<li>License: <strong>MIT</strong></li>
+<li>Stack: React 19, TypeScript, Vite, Tailwind CSS</li>
+<li>Hosting: GitHub Pages</li>
+<li>No tracking, no backend, no analytics</li>
+</ul>
+<h2>Self-host it</h2>
+<p>The site is a static bundle. Two commands:</p>
+<pre><code class="language-bash">git clone https://github.com/themidnightgospel/free-cv-builder
+cd free-cv-builder
+npm install
+npm run build
+</code></pre>
+<p>Deploy the <code>dist/</code> directory to any static host — GitHub Pages, Netlify, Vercel, Cloudflare Pages, an S3 bucket, your own server. There is no server-side runtime.</p>
+<h2>Contributing</h2>
+<p>Pull requests welcome. Bug reports welcome. Templates, accessibility fixes, and translation contributions are especially welcome.</p>
+<p>Before sending a big change, please open an issue first so we can discuss scope.</p>
+<h2>The story</h2>
+<p>This project exists because the author was tired of &quot;free&quot; CV builders that hold your finished PDF hostage behind a paywall, watermark, or signup wall. The goal is a CV tool that doesn&#39;t punish you for using it.</p>
+<p>If that resonates, <a href="https://github.com/themidnightgospel/free-cv-builder">star the repo</a> and tell a friend.</p>
+<hr>
+<p><em>MIT licensed. No warranty. Build something with it.</em></p>
+
+    </main>
+
+    <footer class="site">
+      <nav class="nav">
+        <a href="/">Builder</a>
+        <a href="/how-to-write-a-cv/">How to write a CV</a>
+        <a href="/privacy/">Privacy</a>
+        <a href="/open-source/">Open source</a>
+        <a href="https://github.com/themidnightgospel/free-cv-builder" rel="noopener">GitHub</a>
+      </nav>
+      <a class="cta" href="/">Build your CV →</a>
+    </footer>
+  </body>
+</html>
