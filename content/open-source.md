@@ -13,7 +13,7 @@ updated: "2026-06-05"
 
 Most CV builders are closed-source SaaS. You upload your résumé to a stranger's server and trust the marketing copy on the [privacy page](/privacy/).
 
-Free CV Builder is the opposite. The entire app is a static site you can read end-to-end. The "we don't collect your data" claim is verifiable because you can grep the code for `fetch` and see what we send. Spoiler: nothing.
+Free CV Builder is the opposite. The entire app is a static site you can read end-to-end. The "we don't collect your CV data" claim is verifiable — grep the code for `fetch` and see what we send. Spoiler: nothing. The CV builder talks to no servers. The homepage loads Google AdSense to keep the project free; that's the one third-party script. Details on the [privacy page](/privacy/).
 
 ## The repository
 
@@ -22,7 +22,8 @@ Free CV Builder is the opposite. The entire app is a static site you can read en
 - License: **MIT**
 - Stack: React 19, TypeScript, Vite, Tailwind CSS
 - Hosting: GitHub Pages
-- No tracking, no backend, no analytics
+- No backend, no CV upload
+- Homepage shows ads (AdSense); builder pages do not
 
 ## Self-host it
 

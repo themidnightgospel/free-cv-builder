@@ -22,11 +22,14 @@ Clear your browser data and your saved CVs are gone. We cannot recover them — 
 ## What we don't do
 
 - **No accounts.** You cannot sign up. There is nothing to sign up for.
-- **No tracking pixels.** No Google Analytics, Plausible, Mixpanel, Segment, no analytics of any kind.
-- **No cookies.** Only first-party `localStorage` holds your CV.
-- **No third-party advertising.** Ever.
 - **No fingerprinting.** We do not profile your device.
 - **No data sales.** We have no data to sell.
+
+## Advertising
+
+We show ads via Google AdSense on the homepage to keep the project free. The ad script may set cookies and use your IP and browsing context to choose what to show. Your CV content is never sent to Google or any ad network — the builder pages have no ads, and the CV stays in your browser regardless.
+
+You can opt out of personalized ads at [Google Ad Settings](https://adssettings.google.com/) or block ads entirely with uBlock Origin.
 
 ## Third-party requests we make
 

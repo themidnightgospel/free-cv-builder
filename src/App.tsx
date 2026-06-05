@@ -587,13 +587,13 @@ export const App: React.FC = () => {
               </h1>
               <p className="mx-auto mt-5 max-w-sm text-[15px] leading-relaxed text-muted lg:mx-0">
                 Make a clean, professional CV in a few minutes. Download as PDF.
-                No account. No tracking. No surprises.
+                No account. No surprises.
               </p>
               <ul className="mx-auto mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[12px] text-muted lg:mx-0 lg:justify-start">
                 {[
                   { label: 'No paywall' },
                   { label: 'No signup' },
-                  { label: 'No data harvesting', href: '/privacy/' },
+                  { label: 'CV stays local', href: '/privacy/' },
                   { label: 'No watermarks' },
                 ].map(({ label, href }) => (
                   <li key={label} className="inline-flex items-center gap-1.5">
@@ -784,7 +784,7 @@ export const App: React.FC = () => {
                 </a>
               </nav>
               <p className="mt-3 text-center lg:text-left">
-                MIT licensed · No tracking · Your CV stays in your browser
+                MIT licensed · Your CV stays in your browser
               </p>
             </footer>
           </div>

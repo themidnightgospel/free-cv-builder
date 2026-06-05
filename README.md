@@ -16,7 +16,6 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg" /></a>
-  <img alt="No tracking" src="https://img.shields.io/badge/tracking-none-success.svg" />
   <img alt="Static site" src="https://img.shields.io/badge/hosting-GitHub%20Pages-181717.svg?logo=github" />
   <img alt="Built with React + Vite" src="https://img.shields.io/badge/built%20with-React%20%2B%20Vite-61dafb.svg?logo=react" />
 </p>
@@ -34,7 +33,6 @@ across your résumé until you upgrade. This one doesn't:
 
 - ✅ **No paywall** — every feature is free, forever.
 - ✅ **No sign-up** — your CV never leaves your browser.
-- ✅ **No tracking** — no analytics, no cookies, no telemetry.
 - ✅ **No watermarks** — the PDF you download is the one you exported.
 - ✅ **Open source** — MIT licensed, self-host it in two commands.
 
