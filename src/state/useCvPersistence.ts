@@ -65,6 +65,50 @@ interface UseCvPersistenceResult {
   setSavedCvs: React.Dispatch<React.SetStateAction<SavedCvRecord[]>>;
 }
 
+/**
+ * Persists the given CV to localStorage immediately. Used both by the
+ * debounced autosave and by the synchronous "flush before leaving" path so
+ * navigation away from the editor never drops the user's work.
+ */
+const writeSnapshot = (
+  cv: CvData,
+  currentCvId: string,
+  setSavedCvs: React.Dispatch<React.SetStateAction<SavedCvRecord[]>>,
+) => {
+  if (typeof window === 'undefined') return;
+  if (!currentCvId) return;
+  const records = readSavedCvsFromStorage();
+  if (!hasMeaningfulCv(cv)) {
+    const filtered = records.filter((record) => record.id !== currentCvId);
+    if (filtered.length !== records.length) {
+      writeSavedCvsToStorage(filtered);
+      setSavedCvs(filtered);
+    }
+    persistCurrentCvId(currentCvId);
+    return;
+  }
+  const entry: SavedCvRecord = {
+    id: currentCvId,
+    name: getCvDisplayName(cv),
+    updatedAt: Date.now(),
+    cv,
+  };
+  const existingIndex = records.findIndex(
+    (record) => record.id === currentCvId,
+  );
+  const nextRecords =
+    existingIndex >= 0
+      ? [
+          ...records.slice(0, existingIndex),
+          entry,
+          ...records.slice(existingIndex + 1),
+        ]
+      : [...records, entry];
+  writeSavedCvsToStorage(nextRecords);
+  persistCurrentCvId(currentCvId);
+  setSavedCvs(nextRecords);
+};
+
 export const useCvPersistence = (
   cv: CvData,
   mode: 'landing' | 'editor',
@@ -74,20 +118,31 @@ export const useCvPersistence = (
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const saveTimeoutRef = useRef<number | null>(null);
   const skipInitialPersistRef = useRef(true);
+  const prevModeRef = useRef(mode);
 
   useEffect(() => {
+    const prevMode = prevModeRef.current;
+    prevModeRef.current = mode;
+
     if (skipInitialPersistRef.current) {
       skipInitialPersistRef.current = false;
       return;
     }
+
     if (mode !== 'editor') {
       if (typeof window !== 'undefined' && saveTimeoutRef.current) {
         window.clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = null;
       }
+      // Flush any in-flight save when leaving the editor so a quick "upload
+      // PDF then click Back" doesn't silently drop the just-imported CV.
+      if (prevMode === 'editor') {
+        writeSnapshot(cv, currentCvId, setSavedCvs);
+      }
       setHasUnsavedChanges(false);
       return;
     }
+
     if (typeof window === 'undefined') return;
     if (!currentCvId) return;
     setHasUnsavedChanges(true);
@@ -95,40 +150,7 @@ export const useCvPersistence = (
       window.clearTimeout(saveTimeoutRef.current);
     }
     saveTimeoutRef.current = window.setTimeout(() => {
-      const records = readSavedCvsFromStorage();
-      if (!hasMeaningfulCv(cv)) {
-        const filtered = records.filter(
-          (record) => record.id !== currentCvId,
-        );
-        if (filtered.length !== records.length) {
-          writeSavedCvsToStorage(filtered);
-          setSavedCvs(filtered);
-        }
-        persistCurrentCvId(currentCvId);
-        setHasUnsavedChanges(false);
-        saveTimeoutRef.current = null;
-        return;
-      }
-      const entry: SavedCvRecord = {
-        id: currentCvId,
-        name: getCvDisplayName(cv),
-        updatedAt: Date.now(),
-        cv,
-      };
-      const existingIndex = records.findIndex(
-        (record) => record.id === currentCvId,
-      );
-      const nextRecords =
-        existingIndex >= 0
-          ? [
-              ...records.slice(0, existingIndex),
-              entry,
-              ...records.slice(existingIndex + 1),
-            ]
-          : [...records, entry];
-      writeSavedCvsToStorage(nextRecords);
-      persistCurrentCvId(currentCvId);
-      setSavedCvs(nextRecords);
+      writeSnapshot(cv, currentCvId, setSavedCvs);
       setHasUnsavedChanges(false);
       saveTimeoutRef.current = null;
     }, 1000);
