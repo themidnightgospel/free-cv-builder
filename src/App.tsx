@@ -591,11 +591,11 @@ export const App: React.FC = () => {
               </p>
               <ul className="mx-auto mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[12px] text-muted lg:mx-0 lg:justify-start">
                 {[
-                  'No paywall',
-                  'No signup',
-                  'No data harvesting',
-                  'No watermarks',
-                ].map((label) => (
+                  { label: 'No paywall' },
+                  { label: 'No signup' },
+                  { label: 'No data harvesting', href: '/privacy/' },
+                  { label: 'No watermarks' },
+                ].map(({ label, href }) => (
                   <li key={label} className="inline-flex items-center gap-1.5">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -610,7 +610,16 @@ export const App: React.FC = () => {
                         clipRule="evenodd"
                       />
                     </svg>
-                    {label}
+                    {href ? (
+                      <a
+                        href={href}
+                        className="underline decoration-accent/40 decoration-1 underline-offset-2 transition hover:text-ink hover:decoration-accent"
+                      >
+                        {label}
+                      </a>
+                    ) : (
+                      label
+                    )}
                   </li>
                 ))}
               </ul>
@@ -709,17 +718,6 @@ export const App: React.FC = () => {
               )}
             </div>
 
-            <p className="mt-8 text-center text-[12px] text-muted lg:text-left">
-              Open source on{' '}
-              <a
-                href="https://github.com/themidnightgospel/free-cv-builder"
-                className="font-medium text-ink underline decoration-accent decoration-2 underline-offset-4 transition hover:text-accent"
-                target="_blank"
-                rel="noreferrer"
-              >
-                GitHub
-              </a>
-            </p>
               </div>
 
               {/* RIGHT — CV poster (lg+ only, decorative) */}
@@ -752,6 +750,43 @@ export const App: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            <footer className="relative mt-16 border-t border-slate-200 pt-6 text-[12px] text-muted">
+              <nav
+                className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 lg:justify-start"
+                aria-label="Site"
+              >
+                <a
+                  href="/how-to-write-a-cv/"
+                  className="font-medium text-ink transition hover:text-accent"
+                >
+                  How to write a CV
+                </a>
+                <a
+                  href="/privacy/"
+                  className="font-medium text-ink transition hover:text-accent"
+                >
+                  Privacy
+                </a>
+                <a
+                  href="/open-source/"
+                  className="font-medium text-ink transition hover:text-accent"
+                >
+                  Open source
+                </a>
+                <a
+                  href="https://github.com/themidnightgospel/free-cv-builder"
+                  className="font-medium text-ink transition hover:text-accent"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  GitHub
+                </a>
+              </nav>
+              <p className="mt-3 text-center lg:text-left">
+                MIT licensed · No tracking · Your CV stays in your browser
+              </p>
+            </footer>
           </div>
         </div>
       </>
