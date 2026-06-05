@@ -45,7 +45,9 @@ Bad bullet: *Responsible for managing a team of engineers.*
 
 Good bullet: *Led 6 engineers shipping the billing system that processes $40M/year. Cut deploy time from 45 min to 4 min by replacing the legacy CI pipeline.*
 
-The pattern: **what you did**, **scale or context**, **measurable outcome**. If you can't quantify, use scope or scale instead.
+The pattern: **what you did**, **scale or context**, **measurable outcome**. If you can't quantify, use scope.
+
+This is also where most CVs fail in 2026. ATS and recruiters increasingly search for numbers as a proxy for impact. A CV without numbers reads as junior.
 
 ## Length
 
@@ -98,7 +100,7 @@ If you're applying via a corporate job portal, your CV will be parsed by an ATS 
 
 [Open the builder →](/)
 
-You'll have something exportable in 15 minutes.
+You'll have something exportable in 15 minutes. No signup, no watermark. See the [privacy stance](/privacy/) if you want to confirm nothing leaves your browser.
 
 ---
 

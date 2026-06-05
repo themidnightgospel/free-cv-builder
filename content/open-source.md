@@ -11,7 +11,7 @@ updated: "2026-06-05"
 
 ## Why open source matters here
 
-Most CV builders are closed-source SaaS. You upload your résumé to a stranger's server and trust the marketing copy on the privacy page.
+Most CV builders are closed-source SaaS. You upload your résumé to a stranger's server and trust the marketing copy on the [privacy page](/privacy/).
 
 Free CV Builder is the opposite. The entire app is a static site you can read end-to-end. The "we don't collect your data" claim is verifiable because you can grep the code for `fetch` and see what we send. Spoiler: nothing.
 
@@ -45,9 +45,9 @@ Before sending a big change, please open an issue first so we can discuss scope.
 
 ## The story
 
-This project exists because the author was tired of "free" CV builders that hold your finished PDF hostage behind a paywall, watermark, or signup wall. The goal is a CV tool that doesn't punish you for using it.
+This project exists because every "free" CV builder eventually held the finished PDF hostage behind a paywall, watermark, or signup wall. Free CV Builder doesn't punish you for using it. That's the whole pitch.
 
-If that resonates, [star the repo](https://github.com/themidnightgospel/free-cv-builder) and tell a friend.
+If that resonates, [star the repo](https://github.com/themidnightgospel/free-cv-builder).
 
 ---
 

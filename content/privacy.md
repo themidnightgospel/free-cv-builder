@@ -15,39 +15,37 @@ Free CV Builder is a static website. We have no backend, no database, and no use
 
 ## Where your CV lives
 
-Your CV is stored entirely in your browser's **localStorage**. It never leaves your device unless you explicitly download the PDF and share it yourself.
+Your CV is stored in your browser's **localStorage**. It never leaves your device unless you download the PDF and share it yourself.
 
-If you clear your browser data, your saved CVs are gone. We cannot recover them — we never had them.
+Clear your browser data and your saved CVs are gone. We cannot recover them — we never had them. This is a feature, not a bug. The [source code](/open-source/) is open: you can verify there is no upload path.
 
 ## What we don't do
 
 - **No accounts.** You cannot sign up. There is nothing to sign up for.
-- **No tracking pixels.** No Google Analytics, Plausible, Mixpanel, Segment, or any other analytics.
-- **No cookies.** Other than first-party browser storage, which the app uses to remember your CV.
+- **No tracking pixels.** No Google Analytics, Plausible, Mixpanel, Segment, no analytics of any kind.
+- **No cookies.** Only first-party `localStorage` holds your CV.
 - **No third-party advertising.** Ever.
 - **No fingerprinting.** We do not profile your device.
 - **No data sales.** We have no data to sell.
 
-## What we do load from third parties
+## Third-party requests we make
 
-- **Google Fonts** — to load the Geist and Source Sans 3 typefaces. Google may see your IP address. If this concerns you, browser extensions like uBlock Origin can block this.
-- **GitHub** — only if you click a link to our repository.
+- **Google Fonts** — loads the Geist and Source Sans 3 typefaces. Google sees your IP. Block it with uBlock Origin if you prefer.
+- **GitHub** — only when you click a link to the repository.
 
 ## Hosting
 
-The site is hosted on **GitHub Pages**. GitHub may collect standard server logs (IP, user agent, requested URL) per their own privacy policy. We do not have access to these logs.
+The site is hosted on **GitHub Pages**. GitHub collects standard server logs (IP, user agent, requested URL) per their own privacy policy. We do not have access to these logs.
 
-## PDF export
+## PDF export and upload
 
-PDF generation happens entirely in your browser using the browser's print engine. The PDF is never uploaded anywhere.
+PDF generation runs entirely in your browser via the browser's print engine. The PDF is never uploaded anywhere.
 
-## Uploaded PDFs
-
-When you upload an existing CV PDF, the file is read and parsed in your browser. It is never uploaded to a server.
+When you upload an existing CV PDF, the file is read and parsed in your browser. It is never sent to a server.
 
 ## Contact
 
-This is an open-source project maintained on [GitHub](https://github.com/themidnightgospel/free-cv-builder). Issues and questions belong in the issue tracker.
+[Open an issue on GitHub](https://github.com/themidnightgospel/free-cv-builder/issues).
 
 ---
 
