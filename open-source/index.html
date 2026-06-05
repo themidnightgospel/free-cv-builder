@@ -169,14 +169,15 @@
       <p class="lede">MIT licensed. Self-hostable. Code you can read.</p>
       <h2>Why open source matters here</h2>
 <p>Most CV builders are closed-source SaaS. You upload your résumé to a stranger&#39;s server and trust the marketing copy on the <a href="/privacy/">privacy page</a>.</p>
-<p>Free CV Builder is the opposite. The entire app is a static site you can read end-to-end. The &quot;we don&#39;t collect your data&quot; claim is verifiable because you can grep the code for <code>fetch</code> and see what we send. Spoiler: nothing.</p>
+<p>Free CV Builder is the opposite. The entire app is a static site you can read end-to-end. The &quot;we don&#39;t collect your CV data&quot; claim is verifiable — grep the code for <code>fetch</code> and see what we send. Spoiler: nothing. The CV builder talks to no servers. The homepage loads Google AdSense to keep the project free; that&#39;s the one third-party script. Details on the <a href="/privacy/">privacy page</a>.</p>
 <h2>The repository</h2>
 <p><strong><a href="https://github.com/themidnightgospel/free-cv-builder">github.com/themidnightgospel/free-cv-builder</a></strong></p>
 <ul>
 <li>License: <strong>MIT</strong></li>
 <li>Stack: React 19, TypeScript, Vite, Tailwind CSS</li>
 <li>Hosting: GitHub Pages</li>
-<li>No tracking, no backend, no analytics</li>
+<li>No backend, no CV upload</li>
+<li>Homepage shows ads (AdSense); builder pages do not</li>
 </ul>
 <h2>Self-host it</h2>
 <p>The site is a static bundle. Two commands:</p>
