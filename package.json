@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && node scripts/build-content.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -21,6 +21,8 @@
     "@vitejs/plugin-react": "^5.1.1",
     "@vitest/coverage-v8": "^4.1.7",
     "autoprefixer": "^10.4.22",
+    "gray-matter": "^4.0.3",
+    "marked": "^18.0.5",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.15",
     "typescript": "~5.9.3",

@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>{{title}}</title>
+    <meta name="description" content="{{description}}" />
+    <link rel="canonical" href="https://buildmyfree.cv{{path}}" />
+    <meta name="theme-color" content="#3F7A55" />
+
+    <link rel="icon" type="image/svg+xml" href="/cv-logo.svg" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <meta property="og:type" content="{{ogType}}" />
+    <meta property="og:site_name" content="Free CV Builder" />
+    <meta property="og:title" content="{{title}}" />
+    <meta property="og:description" content="{{description}}" />
+    <meta property="og:url" content="https://buildmyfree.cv{{path}}" />
+    <meta property="og:image" content="https://buildmyfree.cv/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{title}}" />
+    <meta name="twitter:description" content="{{description}}" />
+    <meta name="twitter:image" content="https://buildmyfree.cv/og.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --canvas: #fbfaf8;
+        --paper: #ffffff;
+        --ink: #1a1a1a;
+        --muted: #6b6862;
+        --accent: #3f7a55;
+        --accent-dark: #2d5a3e;
+        --border: #ebe7dd;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--canvas);
+        color: var(--ink);
+        font-family: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+        font-size: 16px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      a { color: var(--accent); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+      a:hover { color: var(--accent-dark); }
+      header.site {
+        position: sticky; top: 0; z-index: 10;
+        background: rgba(251, 250, 248, 0.85);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid var(--border);
+      }
+      header.site .inner {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 14px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      header.site a.brand {
+        display: inline-flex; align-items: center; gap: 10px;
+        color: var(--ink); text-decoration: none; font-weight: 600;
+      }
+      header.site a.brand img { width: 24px; height: 24px; }
+      header.site a.back {
+        color: var(--muted); font-size: 13px; text-decoration: none;
+      }
+      header.site a.back:hover { color: var(--ink); }
+      main.page {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 48px 24px 32px;
+      }
+      main.page h1 {
+        font-size: 40px; line-height: 1.1; letter-spacing: -0.02em;
+        font-weight: 600; margin: 0 0 8px;
+      }
+      main.page .lede {
+        color: var(--muted); font-size: 18px; margin: 0 0 32px;
+      }
+      main.page h2 {
+        font-size: 22px; line-height: 1.3; font-weight: 600;
+        margin: 40px 0 12px;
+      }
+      main.page h3 {
+        font-size: 17px; line-height: 1.4; font-weight: 600;
+        margin: 28px 0 8px;
+      }
+      main.page p { margin: 0 0 16px; }
+      main.page ul, main.page ol { margin: 0 0 16px; padding-left: 24px; }
+      main.page li { margin-bottom: 6px; }
+      main.page code {
+        background: #f5f2ec; padding: 1px 6px; border-radius: 4px;
+        font-size: 0.92em;
+      }
+      main.page pre {
+        background: #1f1e1b; color: #f5f2ec; padding: 16px; border-radius: 8px;
+        overflow-x: auto; font-size: 14px; line-height: 1.5;
+      }
+      main.page pre code { background: transparent; padding: 0; color: inherit; }
+      main.page blockquote {
+        border-left: 3px solid var(--accent);
+        padding: 4px 16px; margin: 16px 0; color: var(--muted);
+      }
+      main.page hr { border: 0; border-top: 1px solid var(--border); margin: 40px 0; }
+      footer.site {
+        max-width: 720px; margin: 0 auto;
+        padding: 32px 24px 48px;
+        border-top: 1px solid var(--border);
+        color: var(--muted); font-size: 13px;
+      }
+      footer.site .nav {
+        display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px;
+      }
+      footer.site .nav a { color: var(--ink); text-decoration: none; font-weight: 500; }
+      footer.site .nav a:hover { color: var(--accent); }
+      footer.site .cta {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: var(--ink); color: var(--paper);
+        padding: 10px 18px; border-radius: 999px;
+        text-decoration: none; font-weight: 500; font-size: 13px;
+        margin-top: 4px;
+      }
+      footer.site .cta:hover { background: var(--accent-dark); color: var(--paper); }
+    </style>
+
+    {{jsonLd}}
+  </head>
+  <body>
+    <header class="site">
+      <div class="inner">
+        <a class="brand" href="/">
+          <img src="/cv-logo.svg" alt="" />
+          <span>Free CV Builder</span>
+        </a>
+        <a class="back" href="/">← Back to builder</a>
+      </div>
+    </header>
+
+    <main class="page">
+      <h1>{{h1}}</h1>
+      <p class="lede">{{lede}}</p>
+      {{content}}
+    </main>
+
+    <footer class="site">
+      <nav class="nav">
+        <a href="/">Builder</a>
+        <a href="/how-to-write-a-cv/">How to write a CV</a>
+        <a href="/privacy/">Privacy</a>
+        <a href="/open-source/">Open source</a>
+        <a href="https://github.com/themidnightgospel/free-cv-builder" rel="noopener">GitHub</a>
+      </nav>
+      <a class="cta" href="/">Build your CV →</a>
+    </footer>
+  </body>
+</html>
