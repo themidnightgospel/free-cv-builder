@@ -46,7 +46,7 @@ export const EditableWrapper: React.FC<EditableWrapperProps> = ({
       />
       {/* Floating control cluster — absolute, zero layout height so builder
           pagination matches the PDF exactly. */}
-      <div className="absolute -top-3 right-0 z-10 flex items-center gap-0.5 rounded-full border border-slate-200 bg-paper px-1 py-0.5 opacity-0 shadow-soft transition group-hover:opacity-100 hover:opacity-100 focus-within:opacity-100">
+      <div className="absolute bottom-full right-0 z-10 mb-1 flex items-center gap-0.5 rounded-full border border-slate-200 bg-paper px-1 py-0.5 opacity-0 shadow-soft transition group-hover:opacity-100 hover:opacity-100 focus-within:opacity-100">
         {onMoveUp && (
           <button
             type="button"
