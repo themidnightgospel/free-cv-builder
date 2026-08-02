@@ -17,7 +17,7 @@ test('readme demo: landing → create CV → fill info → download', async ({
   await page.goto('/');
   await page.waitForTimeout(900);
 
-  await page.getByRole('button', { name: /Create new CV/i }).click();
+  await page.getByRole('button', { name: /Create new/i }).click();
   await page.waitForTimeout(700);
 
   await page.getByRole('button', { name: 'Full name' }).click();

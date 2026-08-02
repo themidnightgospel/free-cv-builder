@@ -4,7 +4,7 @@ test.describe('Section management', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => window.localStorage.clear());
     await page.goto('/');
-    await page.getByRole('button', { name: /Create new CV/i }).click();
+    await page.getByRole('button', { name: /Create new/i }).click();
   });
 
   test('default sections render in editor', async ({ page }) => {

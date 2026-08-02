@@ -10,13 +10,13 @@ test.describe('Landing page', () => {
   test('renders hero, sample poster and primary CTAs', async ({ page }) => {
     await page.goto('/');
     await expect(
-      page.getByRole('heading', { name: /Free CV builder/i }),
+      page.getByRole('heading', { name: /Free CV/i }),
     ).toBeVisible();
     await expect(
-      page.getByRole('button', { name: /Create new CV/i }),
+      page.getByRole('button', { name: /Create new/i }),
     ).toBeVisible();
     await expect(
-      page.getByRole('button', { name: /Upload existing CV/i }),
+      page.getByRole('button', { name: /Upload existing/i }),
     ).toBeVisible();
   });
 
@@ -24,7 +24,7 @@ test.describe('Landing page', () => {
     page,
   }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: /Create new CV/i }).click();
+    await page.getByRole('button', { name: /Create new/i }).click();
     await expect(
       page.getByRole('button', { name: /Download PDF/i }),
     ).toBeVisible();
@@ -33,10 +33,10 @@ test.describe('Landing page', () => {
 
   test('clicking the back button returns to landing', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: /Create new CV/i }).click();
+    await page.getByRole('button', { name: /Create new/i }).click();
     await page.getByRole('button', { name: /Back to start/i }).click();
     await expect(
-      page.getByRole('heading', { name: /Free CV builder/i }),
+      page.getByRole('heading', { name: /Free CV/i }),
     ).toBeVisible();
   });
 

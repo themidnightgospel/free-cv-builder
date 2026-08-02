@@ -22,7 +22,7 @@ test.describe('CV persistence in localStorage', () => {
     await visitClean(page);
 
     const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: /Upload existing CV/i }).click();
+    await page.getByRole('button', { name: /Upload existing/i }).click();
     const chooser = await fileChooserPromise;
     await chooser.setFiles(FIXTURE);
     await expect(page.getByText(/Bitchiko Tchelidze/).first()).toBeVisible({
@@ -55,7 +55,7 @@ test.describe('CV persistence in localStorage', () => {
     await visitClean(page);
 
     const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: /Upload existing CV/i }).click();
+    await page.getByRole('button', { name: /Upload existing/i }).click();
     const chooser = await fileChooserPromise;
     await chooser.setFiles(FIXTURE);
     await expect(page.getByText(/Bitchiko Tchelidze/).first()).toBeVisible({
@@ -72,7 +72,7 @@ test.describe('CV persistence in localStorage', () => {
 
   test('Create-new + edit also persists across reload', async ({ page }) => {
     await visitClean(page);
-    await page.getByRole('button', { name: /Create new CV/i }).click();
+    await page.getByRole('button', { name: /Create new/i }).click();
     await page.getByRole('button', { name: 'Full name' }).first().click();
     await page
       .getByRole('textbox', { name: 'Full name' })

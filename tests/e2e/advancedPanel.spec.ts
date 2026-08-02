@@ -4,7 +4,7 @@ test.describe('Advanced settings panel', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => window.localStorage.clear());
     await page.goto('/');
-    await page.getByRole('button', { name: /Create new CV/i }).click();
+    await page.getByRole('button', { name: /Create new/i }).click();
   });
 
   test('panel is collapsed by default and expands on click', async ({

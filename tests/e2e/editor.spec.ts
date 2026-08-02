@@ -4,7 +4,7 @@ test.describe('Editor — personal info inline editing', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => window.localStorage.clear());
     await page.goto('/');
-    await page.getByRole('button', { name: /Create new CV/i }).click();
+    await page.getByRole('button', { name: /Create new/i }).click();
   });
 
   test('editing full name updates the header', async ({ page }) => {
@@ -107,7 +107,7 @@ test.describe('Editor — entries', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => window.localStorage.clear());
     await page.goto('/');
-    await page.getByRole('button', { name: /Create new CV/i }).click();
+    await page.getByRole('button', { name: /Create new/i }).click();
   });
 
   test('add experience entry inline', async ({ page }) => {
@@ -265,7 +265,7 @@ test.describe('Editor — PDF validation modal', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => window.localStorage.clear());
     await page.goto('/');
-    await page.getByRole('button', { name: /Create new CV/i }).click();
+    await page.getByRole('button', { name: /Create new/i }).click();
   });
 
   test('Download PDF without full name/email triggers validation modal', async ({

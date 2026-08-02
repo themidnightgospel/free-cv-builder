@@ -14,7 +14,7 @@ test.describe('Legacy PDF import', () => {
     await page.addInitScript(() => window.localStorage.clear());
     await page.goto('/');
     const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: /Upload existing CV/i }).click();
+    await page.getByRole('button', { name: /Upload existing/i }).click();
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles(FIXTURE);
     await expect(
@@ -37,7 +37,7 @@ test.describe('Legacy PDF import', () => {
     await page.addInitScript(() => window.localStorage.clear());
     await page.goto('/');
     const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: /Upload existing CV/i }).click();
+    await page.getByRole('button', { name: /Upload existing/i }).click();
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles(FIXTURE);
     await expect(

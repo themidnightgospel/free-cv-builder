@@ -3,6 +3,7 @@ import { TrashIcon } from '@heroicons/react/24/outline';
 import type { CvData, CvSectionKey, SectionId } from './types';
 import { CvPreview } from './components/CvPreview';
 import { AdvancedPanel } from './components/AdvancedPanel';
+import { GitHubStarButton } from './components/GitHubStarButton';
 import { PhotoCropModal } from './components/PhotoCropModal';
 import { useConfirmDialog } from './components/ConfirmDialogProvider';
 import { encodeCvPayloadForText } from './pdf/encodeCvPayload';
@@ -475,47 +476,30 @@ export const App: React.FC = () => {
   const header = (
     <header className="fixed inset-x-0 top-0 z-20 border-b border-slate-200/80 bg-canvas/85 backdrop-blur-md print:hidden">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <button
-            type="button"
-            className="rounded-full p-1.5 text-muted transition hover:bg-slate-100 hover:text-ink"
-            onClick={() => {
-              setMode('landing');
-            }}
-            aria-label="Back to start"
-            title="Back to start"
+        <button
+          type="button"
+          className="rounded-full p-1.5 text-muted transition hover:bg-slate-100 hover:text-ink"
+          onClick={() => {
+            setMode('landing');
+          }}
+          aria-label="Back to start"
+          title="Back to start"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className="h-4 w-4"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="h-4 w-4"
-            >
-              <path
-                fillRule="evenodd"
-                d="M12.79 5.23a.75.75 0 0 1 0 1.06L9.06 10l3.73 3.71a.75.75 0 1 1-1.06 1.06l-4.25-4.24a.75.75 0 0 1 0-1.06l4.25-4.24a.75.75 0 0 1 1.06 0Z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </button>
-          <div className="hidden h-5 w-px bg-slate-200 sm:block" />
-          <div className="hidden min-w-0 items-center gap-2.5 sm:flex">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/10 text-accent">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="h-3.5 w-3.5"
-              >
-                <path d="M4.5 3A1.5 1.5 0 0 0 3 4.5v11A1.5 1.5 0 0 0 4.5 17h11a1.5 1.5 0 0 0 1.5-1.5v-11A1.5 1.5 0 0 0 15.5 3h-11ZM7 7.25a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5h-4.5A.75.75 0 0 1 7 7.25Zm.75 2.75a.75.75 0 0 0 0 1.5h4.5a.75.75 0 0 0 0-1.5h-4.5Zm0 3.25a.75.75 0 0 0 0 1.5h2.5a.75.75 0 0 0 0-1.5h-2.5Z" />
-              </svg>
-            </span>
-            <span className="text-[15px] font-semibold tracking-tight text-ink">
-              freecv
-            </span>
-          </div>
-        </div>
+            <path
+              fillRule="evenodd"
+              d="M12.79 5.23a.75.75 0 0 1 0 1.06L9.06 10l3.73 3.71a.75.75 0 1 1-1.06 1.06l-4.25-4.24a.75.75 0 0 1 0-1.06l4.25-4.24a.75.75 0 0 1 1.06 0Z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
         <div className="flex shrink-0 items-center gap-2.5">
+          <GitHubStarButton variant="header" hideLabelOnMobile />
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
               hasUnsavedChanges
@@ -577,52 +561,17 @@ export const App: React.FC = () => {
             <div className="grid grid-cols-1 items-center gap-y-12 lg:grid-cols-12 lg:gap-x-10 xl:gap-x-16">
               {/* LEFT — content */}
               <div className="mx-auto w-full max-w-md lg:col-span-6 lg:mx-0 lg:max-w-none">
-            <div className="mb-10 text-center lg:text-left">
-              <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-paper/70 px-3 py-1 text-[11px] font-medium text-muted shadow-soft backdrop-blur">
-                <span className="flex h-1.5 w-1.5 rounded-full bg-accent" />
-                Open source · MIT
-              </span>
-              <h1 className="mt-6 text-[44px] font-semibold leading-[1.05] tracking-tight text-ink sm:text-[52px] lg:text-[56px]">
-                Free CV builder
+            <div className="mb-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-3 lg:justify-start">
+              <h1 className="text-[44px] font-semibold leading-[1.05] tracking-tight text-ink sm:text-[52px] lg:text-[56px]">
+                Free CV
               </h1>
-              <p className="mx-auto mt-5 max-w-sm text-[15px] leading-relaxed text-muted lg:mx-0">
-                Make a clean, professional CV in a few minutes. Download as PDF.
-                No account. No surprises.
-              </p>
-              <ul className="mx-auto mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[12px] text-muted lg:mx-0 lg:justify-start">
-                {[
-                  { label: 'No paywall' },
-                  { label: 'No signup' },
-                  { label: 'CV stays local', href: '/privacy/' },
-                  { label: 'No watermarks' },
-                ].map(({ label, href }) => (
-                  <li key={label} className="inline-flex items-center gap-1.5">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      className="h-3.5 w-3.5 text-accent"
-                      aria-hidden
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M16.704 5.29a.75.75 0 0 1 .006 1.06l-7.5 7.59a.75.75 0 0 1-1.07.005l-3.75-3.75a.75.75 0 1 1 1.06-1.06l3.213 3.213 6.97-7.052a.75.75 0 0 1 1.061-.006Z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    {href ? (
-                      <a
-                        href={href}
-                        className="underline decoration-accent/40 decoration-1 underline-offset-2 transition hover:text-ink hover:decoration-accent"
-                      >
-                        {label}
-                      </a>
-                    ) : (
-                      label
-                    )}
-                  </li>
-                ))}
-              </ul>
+              <span
+                className="hidden text-[32px] font-light leading-none text-slate-300 sm:inline"
+                aria-hidden
+              >
+                |
+              </span>
+              <GitHubStarButton variant="hero" />
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-paper p-5 shadow-soft">
@@ -632,7 +581,7 @@ export const App: React.FC = () => {
                   onClick={handleCreateNew}
                   className="group flex w-full items-center justify-center gap-2 rounded-xl bg-ink px-5 py-3 text-[14px] font-medium text-paper shadow-soft transition hover:bg-accent-dark"
                 >
-                  Create new CV
+                  Create new
                   <span className="transition group-hover:translate-x-0.5">
                     →
                   </span>
@@ -640,19 +589,24 @@ export const App: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => cvUploadInputRef.current?.click()}
-                  className="group flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-paper px-5 py-3 text-[14px] font-medium text-ink transition hover:border-slate-300 hover:bg-slate-50"
+                  className="group flex w-full items-center justify-center gap-2.5 rounded-xl border border-slate-200 bg-paper px-5 py-2.5 text-[14px] font-medium text-ink transition hover:border-slate-300 hover:bg-slate-50"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 20 20"
                     fill="currentColor"
-                    className="h-4 w-4 text-muted transition group-hover:text-ink"
+                    className="h-4 w-4 shrink-0 text-muted transition group-hover:text-ink"
                     aria-hidden
                   >
                     <path d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 1 0 1.09 1.03L9.25 4.636v8.614Z" />
                     <path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" />
                   </svg>
-                  Upload existing CV
+                  <span className="flex flex-col items-center leading-tight">
+                    Upload existing
+                    <span className="mt-0.5 text-[11px] font-normal text-muted">
+                      Only CVs made on buildmyfree.cv
+                    </span>
+                  </span>
                 </button>
                 <input
                   ref={cvUploadInputRef}
@@ -661,9 +615,6 @@ export const App: React.FC = () => {
                   className="hidden"
                   onChange={handlePdfUploadChange}
                 />
-                <p className="text-center text-[11px] text-muted">
-                  Continue editing a PDF you made on buildmyfree.cv
-                </p>
               </div>
 
               {nonEmptySavedCvs.length > 0 && (
@@ -717,6 +668,41 @@ export const App: React.FC = () => {
                 </div>
               )}
             </div>
+
+            <ul className="mx-auto mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[12px] text-muted lg:mx-0 lg:justify-start">
+              {[
+                { label: 'No paywall' },
+                { label: 'No signup' },
+                { label: 'CV stays local', href: '/privacy/' },
+                { label: 'No watermarks' },
+              ].map(({ label, href }) => (
+                <li key={label} className="inline-flex items-center gap-1.5">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    className="h-3.5 w-3.5 text-accent"
+                    aria-hidden
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.704 5.29a.75.75 0 0 1 .006 1.06l-7.5 7.59a.75.75 0 0 1-1.07.005l-3.75-3.75a.75.75 0 1 1 1.06-1.06l3.213 3.213 6.97-7.052a.75.75 0 0 1 1.061-.006Z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  {href ? (
+                    <a
+                      href={href}
+                      className="underline decoration-accent/40 decoration-1 underline-offset-2 transition hover:text-ink hover:decoration-accent"
+                    >
+                      {label}
+                    </a>
+                  ) : (
+                    label
+                  )}
+                </li>
+              ))}
+            </ul>
 
               </div>
 
@@ -774,14 +760,7 @@ export const App: React.FC = () => {
                 >
                   Open source
                 </a>
-                <a
-                  href="https://github.com/themidnightgospel/free-cv-builder"
-                  className="font-medium text-ink transition hover:text-accent"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  GitHub
-                </a>
+                <GitHubStarButton variant="footer" />
               </nav>
               <p className="mt-3 text-center lg:text-left">
                 MIT licensed · Your CV stays in your browser
