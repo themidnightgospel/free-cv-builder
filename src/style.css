@@ -141,3 +141,14 @@
 .cv-markdown ol li {
   list-style-type: decimal;
 }
+/* Editing controls hide until hover, which has no meaning on a touch screen:
+   the tap that reveals them also activates whatever sits under the finger, so
+   tapping apparently blank space could silently reorder or delete a section.
+   Where there is no hover, keep them visible so every tap is deliberate. */
+@media (hover: none) {
+  [data-entry-toolbar],
+  [data-section-toolbar] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}

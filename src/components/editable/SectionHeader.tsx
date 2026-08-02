@@ -36,7 +36,13 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
       <h2 className="font-section-title font-semibold uppercase tracking-wide text-slate-500">
         {title}
       </h2>
-      <div className="flex items-center gap-0.5 rounded-full border border-slate-200 bg-paper px-1 py-0.5 opacity-0 shadow-soft transition group-hover/section:opacity-100 hover:opacity-100 focus-within:opacity-100">
+      {/* Stays clickable while faded out: on a device with hover, moving the
+          pointer here reveals it before any click lands. Touch devices are
+          handled by the `(hover: none)` rule in style.css. */}
+      <div
+        data-section-toolbar
+        className="flex items-center gap-0.5 rounded-full border border-slate-200 bg-paper px-1 py-0.5 opacity-0 shadow-soft transition group-hover/section:opacity-100 hover:opacity-100 focus-within:opacity-100"
+      >
         {onMoveUp && (
           <button
             type="button"
