@@ -1,4 +1,5 @@
 import { ungzip, inflate } from 'pako';
+import { encodeCanvasAsPhoto } from '../utils/photo';
 import { PDF_JSON_TEXT_END_MARKER, PDF_JSON_TEXT_START_MARKER } from './pdfMarkers';
 
 export const base64ToUint8 = (base64: string): Uint8Array => {
@@ -330,18 +331,40 @@ export const extractEmbeddedCvJsonFromPdf = async (
 const convertImageToDataUrl = (image: any, pdfjs: any): string | null => {
   if (!image) return null;
 
-  const renderDrawable = (drawable: CanvasImageSource) => {
+  /**
+   * Dimensions have to be passed in: a `VideoFrame` exposes `codedWidth` /
+   * `displayWidth` rather than `width`, so reading `.width` off the drawable
+   * silently yields 0 for it.
+   */
+  const renderDrawable = (
+    drawable: CanvasImageSource,
+    width: number,
+    height: number,
+  ) => {
+    if (!width || !height) return null;
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
-    const width = (drawable as any).width ?? 0;
-    const height = (drawable as any).height ?? 0;
-    if (!width || !height) return null;
     canvas.width = width;
     canvas.height = height;
-    ctx.drawImage(drawable, 0, 0);
-    return canvas.toDataURL('image/png');
+    ctx.drawImage(drawable, 0, 0, width, height);
+    return encodeCanvasAsPhoto(canvas);
   };
+
+  const drawableSize = (drawable: any, fallback: any) => ({
+    width:
+      fallback?.width ??
+      drawable?.width ??
+      drawable?.displayWidth ??
+      drawable?.codedWidth ??
+      0,
+    height:
+      fallback?.height ??
+      drawable?.height ??
+      drawable?.displayHeight ??
+      drawable?.codedHeight ??
+      0,
+  });
 
   if (image instanceof ImageData) {
     const canvas = document.createElement('canvas');
@@ -350,17 +373,19 @@ const convertImageToDataUrl = (image: any, pdfjs: any): string | null => {
     canvas.width = image.width;
     canvas.height = image.height;
     ctx.putImageData(image, 0, 0);
-    return canvas.toDataURL('image/png');
+    return encodeCanvasAsPhoto(canvas);
   }
 
-  const bitmapImage =
+  // pdf.js hands decoded images back in whatever wrapper the build uses —
+  // v4 uses a `VideoFrame`, older builds an `ImageBitmap`. Rather than
+  // enumerating classes, take anything canvas can draw.
+  const drawable: any =
     typeof ImageBitmap !== 'undefined' && image instanceof ImageBitmap
       ? image
-      : typeof ImageBitmap !== 'undefined' && image?.bitmap instanceof ImageBitmap
-        ? image.bitmap
-        : null;
-  if (bitmapImage) {
-    const dataUrl = renderDrawable(bitmapImage);
+      : (image?.bitmap ?? null);
+  if (drawable) {
+    const { width, height } = drawableSize(drawable, image);
+    const dataUrl = renderDrawable(drawable, width, height);
     if (dataUrl) return dataUrl;
   }
 
@@ -368,7 +393,7 @@ const convertImageToDataUrl = (image: any, pdfjs: any): string | null => {
     typeof HTMLImageElement !== 'undefined' &&
     image instanceof HTMLImageElement
   ) {
-    const dataUrl = renderDrawable(image);
+    const dataUrl = renderDrawable(image, image.width, image.height);
     if (dataUrl) return dataUrl;
   }
 
@@ -408,7 +433,28 @@ const convertImageToDataUrl = (image: any, pdfjs: any): string | null => {
 
   if (!imageData) return null;
   ctx.putImageData(imageData, 0, 0);
-  return canvas.toDataURL('image/png');
+  return encodeCanvasAsPhoto(canvas);
+};
+
+/**
+ * Renders a page to a throwaway canvas purely for its side effect: pdf.js
+ * populates `page.objs` with decoded images as it draws them. Scaled down
+ * because only the image data matters, not the rendered output.
+ */
+const renderPageOffscreen = async (page: any): Promise<void> => {
+  try {
+    const viewport = page.getViewport({ scale: 0.5 });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.ceil(viewport.width));
+    canvas.height = Math.max(1, Math.ceil(viewport.height));
+    const canvasContext = canvas.getContext('2d');
+    if (!canvasContext) return;
+    await page.render({ canvasContext, viewport }).promise;
+  } catch (error) {
+    // Rendering is best effort — a failure here just means no photo is
+    // recovered, which must not break importing the CV text.
+    console.warn('Could not render PDF page to resolve images', error);
+  }
 };
 
 export const extractProfileImageFromPdf = async (
@@ -481,6 +527,11 @@ export const extractProfileImageFromPdf = async (
     }
 
     if (xObjectNames.size > 0) {
+      // pdf.js only resolves image XObjects while a page is being rendered;
+      // reading page.objs before that throws "isn't resolved yet" for every
+      // image. Render once offscreen so the objects become available.
+      await renderPageOffscreen(page);
+
       for (const name of xObjectNames) {
         try {
           const image = page.objs.get(name);
@@ -488,8 +539,8 @@ export const extractProfileImageFromPdf = async (
             pushCandidate(image, 'xobject');
           }
         } catch {
-          // If an object is not yet available or cannot be retrieved,
-          // skip it rather than risking a hang.
+          // An individual object may still be unavailable; skip it rather
+          // than failing the whole import.
         }
       }
     }

@@ -1,6 +1,11 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
+import {
+  PHOTO_MIME_TYPE,
+  PHOTO_QUALITY,
+  getPhotoOutputSize,
+} from '../utils/photo';
 
 type PhotoCropModalProps = {
   imageSrc: string;
@@ -19,7 +24,7 @@ const createImage = (src: string): Promise<HTMLImageElement> =>
 
 const getCroppedCircle = async (imageSrc: string, cropArea: Area) => {
   const image = await createImage(imageSrc);
-  const size = Math.max(cropArea.width, cropArea.height);
+  const size = getPhotoOutputSize(cropArea.width, cropArea.height);
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
@@ -28,6 +33,11 @@ const getCroppedCircle = async (imageSrc: string, cropArea: Area) => {
   if (!context) {
     throw new Error('Could not get canvas context for cropping');
   }
+
+  // JPEG carries no alpha channel, so paint the paper colour behind the
+  // circular mask instead of leaving the corners black.
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, size, size);
 
   context.save();
   context.beginPath();
@@ -48,7 +58,7 @@ const getCroppedCircle = async (imageSrc: string, cropArea: Area) => {
   );
 
   context.restore();
-  return canvas.toDataURL('image/png');
+  return canvas.toDataURL(PHOTO_MIME_TYPE, PHOTO_QUALITY);
 };
 
 export const PhotoCropModal: React.FC<PhotoCropModalProps> = ({

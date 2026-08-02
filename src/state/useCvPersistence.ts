@@ -36,15 +36,23 @@ export const readSavedCvsFromStorage = (): SavedCvRecord[] => {
   }
 };
 
-export const writeSavedCvsToStorage = (records: SavedCvRecord[]) => {
-  if (typeof window === 'undefined') return;
+/**
+ * Returns whether the write actually landed. Storage can reject a write when
+ * the quota is exceeded; callers must not report the CV as saved in that case.
+ */
+export const writeSavedCvsToStorage = (
+  records: SavedCvRecord[],
+): boolean => {
+  if (typeof window === 'undefined') return false;
   try {
     window.localStorage.setItem(
       SAVED_CVS_STORAGE_KEY,
       JSON.stringify(records),
     );
+    return true;
   } catch (error) {
     console.error('Failed to persist CVs', error);
+    return false;
   }
 };
 
@@ -69,23 +77,25 @@ interface UseCvPersistenceResult {
  * Persists the given CV to localStorage immediately. Used both by the
  * debounced autosave and by the synchronous "flush before leaving" path so
  * navigation away from the editor never drops the user's work.
+ *
+ * Returns whether the CV is now safely on disk.
  */
 const writeSnapshot = (
   cv: CvData,
   currentCvId: string,
   setSavedCvs: React.Dispatch<React.SetStateAction<SavedCvRecord[]>>,
-) => {
-  if (typeof window === 'undefined') return;
-  if (!currentCvId) return;
+): boolean => {
+  if (typeof window === 'undefined') return false;
+  if (!currentCvId) return false;
   const records = readSavedCvsFromStorage();
   if (!hasMeaningfulCv(cv)) {
     const filtered = records.filter((record) => record.id !== currentCvId);
-    if (filtered.length !== records.length) {
-      writeSavedCvsToStorage(filtered);
-      setSavedCvs(filtered);
-    }
     persistCurrentCvId(currentCvId);
-    return;
+    // Nothing stored for an empty CV, so there is nothing that can be lost.
+    if (filtered.length === records.length) return true;
+    const removed = writeSavedCvsToStorage(filtered);
+    if (removed) setSavedCvs(filtered);
+    return removed;
   }
   const entry: SavedCvRecord = {
     id: currentCvId,
@@ -104,9 +114,12 @@ const writeSnapshot = (
           ...records.slice(existingIndex + 1),
         ]
       : [...records, entry];
-  writeSavedCvsToStorage(nextRecords);
+  const persisted = writeSavedCvsToStorage(nextRecords);
   persistCurrentCvId(currentCvId);
-  setSavedCvs(nextRecords);
+  // Only mirror into React state what storage actually accepted, so the
+  // in-memory list cannot drift ahead of what a reload would restore.
+  if (persisted) setSavedCvs(nextRecords);
+  return persisted;
 };
 
 export const useCvPersistence = (
@@ -136,10 +149,11 @@ export const useCvPersistence = (
       }
       // Flush any in-flight save when leaving the editor so a quick "upload
       // PDF then click Back" doesn't silently drop the just-imported CV.
-      if (prevMode === 'editor') {
-        writeSnapshot(cv, currentCvId, setSavedCvs);
-      }
-      setHasUnsavedChanges(false);
+      const flushed =
+        prevMode === 'editor'
+          ? writeSnapshot(cv, currentCvId, setSavedCvs)
+          : true;
+      setHasUnsavedChanges(!flushed);
       return;
     }
 
@@ -150,8 +164,10 @@ export const useCvPersistence = (
       window.clearTimeout(saveTimeoutRef.current);
     }
     saveTimeoutRef.current = window.setTimeout(() => {
-      writeSnapshot(cv, currentCvId, setSavedCvs);
-      setHasUnsavedChanges(false);
+      const persisted = writeSnapshot(cv, currentCvId, setSavedCvs);
+      // A rejected write must keep reading as "Unsaved" rather than claiming
+      // the work is safe when a reload would lose it.
+      setHasUnsavedChanges(!persisted);
       saveTimeoutRef.current = null;
     }, 1000);
     return () => {
