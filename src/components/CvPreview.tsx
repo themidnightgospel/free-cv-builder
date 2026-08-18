@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
+import { TrashIcon } from '@heroicons/react/24/outline';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import type {
@@ -271,30 +272,49 @@ const CvHeader: React.FC<CvHeaderProps> = ({ personalInfo, editor }) => {
     <div className="flex flex-col gap-4 border-b border-slate-200 pb-3 sm:flex-row sm:items-center sm:gap-[0.9rem]">
       <div className="flex items-center gap-4">
         {(personalInfo.photoDataUrl || editor) && (
-          <button
-            type="button"
-            onClick={editor?.onPhotoUploadRequest}
-            disabled={!editor}
-            className={`h-16 w-16 overflow-hidden rounded-full bg-slate-100 ${
-              editor
-                ? 'cursor-pointer ring-1 ring-transparent transition hover:ring-2 hover:ring-accent/40'
-                : ''
-            }`}
-            title={editor ? 'Change photo' : undefined}
-            aria-label={editor ? 'Change profile photo' : undefined}
-          >
-            {personalInfo.photoDataUrl ? (
-              <img
-                src={personalInfo.photoDataUrl}
-                alt={personalInfo.fullName || 'Profile photo'}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <span className="flex h-full w-full items-center justify-center text-[10px] text-muted">
-                Photo
-              </span>
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={editor?.onPhotoUploadRequest}
+              disabled={!editor}
+              className={`h-16 w-16 overflow-hidden rounded-full bg-slate-100 ${
+                editor
+                  ? 'cursor-pointer ring-1 ring-transparent transition hover:ring-2 hover:ring-accent/40'
+                  : ''
+              }`}
+              title={editor ? 'Change photo' : undefined}
+              aria-label={editor ? 'Change profile photo' : undefined}
+            >
+              {personalInfo.photoDataUrl ? (
+                <img
+                  src={personalInfo.photoDataUrl}
+                  alt={personalInfo.fullName || 'Profile photo'}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-[10px] text-muted">
+                  Photo
+                </span>
+              )}
+            </button>
+            {editor && personalInfo.photoDataUrl && (
+              <button
+                type="button"
+                onClick={async () => {
+                  const ok = await editor.confirmDeleteEntry(
+                    'Remove this photo? This cannot be undone.',
+                  );
+                  if (!ok) return;
+                  updatePersonal({ photoDataUrl: null });
+                }}
+                className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-white bg-slate-700 text-white shadow-sm transition hover:bg-red-600"
+                title="Remove photo"
+                aria-label="Remove profile photo"
+              >
+                <TrashIcon className="h-3.5 w-3.5" />
+              </button>
             )}
-          </button>
+          </div>
         )}
         <div>
           <h1 className="text-xl font-semibold text-slate-900">
