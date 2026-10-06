@@ -6,7 +6,10 @@ import { AdvancedPanel } from './components/AdvancedPanel';
 import { GitHubStarButton } from './components/GitHubStarButton';
 import { PhotoCropModal } from './components/PhotoCropModal';
 import { useConfirmDialog } from './components/ConfirmDialogProvider';
-import { encodeCvPayloadForText } from './pdf/encodeCvPayload';
+import {
+  encodeCvPayloadForText,
+  payloadDeclaresNoPhoto,
+} from './pdf/encodeCvPayload';
 import {
   extractEmbeddedCvJsonFromPdf,
   extractProfileImageFromPdf,
@@ -194,7 +197,10 @@ export const App: React.FC = () => {
       const photoDataUrl = await photoFromPdfPromise;
 
       if (jsonText) {
-        importCvFromJsonText(jsonText, 'PDF file', photoDataUrl || undefined);
+        const restoredPhoto = payloadDeclaresNoPhoto(jsonText)
+          ? undefined
+          : photoDataUrl || undefined;
+        importCvFromJsonText(jsonText, 'PDF file', restoredPhoto);
         return;
       }
 

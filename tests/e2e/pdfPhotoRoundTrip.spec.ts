@@ -78,4 +78,37 @@ test.describe('PDF photo round trip', () => {
       )
       .toBeGreaterThan(0);
   });
+
+  test('a CV without a photo does not gain one on re-import', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await page.evaluate(() => window.localStorage.clear());
+    await page.goto('/');
+    await page.getByRole('button', { name: /Create new/i }).click();
+
+    await page.getByRole('button', { name: 'Full name' }).click();
+    const name = page.getByRole('textbox', { name: 'Full name' });
+    await name.fill('Grace Hopper');
+    await name.press('Enter');
+
+    const pdf = await page.pdf({ printBackground: true, format: 'A4' });
+
+    await page.getByRole('button', { name: /Back to start/i }).click();
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: /Upload existing/i }).click();
+    (await chooser).setFiles({
+      name: 'exported.pdf',
+      mimeType: 'application/pdf',
+      buffer: pdf,
+    });
+
+    // The photo is applied together with the text, so once the name is back
+    // the import is complete.
+    await expect(page.getByRole('button', { name: 'Full name' })).toContainText(
+      'Grace Hopper',
+      { timeout: 60_000 },
+    );
+    await expect(page.locator('img[src^="data:"]')).toHaveCount(0);
+  });
 });

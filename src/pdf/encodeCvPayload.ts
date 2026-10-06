@@ -204,7 +204,24 @@ const buildCompactCvPayload = (cv: CvData) => ({
   sectionsOrder: cv.sectionsOrder ?? [],
   fontSettings: cv.fontSettings,
   advancedSettings: cv.advancedSettings,
+  // The photo itself is recovered from the PDF's image, not embedded here;
+  // the flag tells the importer whether there is one to look for.
+  hasPhoto: Boolean(cv.personalInfo.photoDataUrl?.trim()),
 });
+
+
+/**
+ * True when an embedded payload says the CV had no photo, so the importer must
+ * not take some other image from the PDF for one. Payloads written before the
+ * flag existed say nothing, and photo recovery still runs for them.
+ */
+export const payloadDeclaresNoPhoto = (jsonText: string): boolean => {
+  try {
+    return JSON.parse(jsonText)?.hasPhoto === false;
+  } catch {
+    return false;
+  }
+};
 
 export const encodeCvPayloadForText = (data: CvData): string => {
   const payload = buildCompactCvPayload(data);
