@@ -33,6 +33,7 @@
     lineHeight: 1.5,
     accentColor: '#2563eb',
     showSectionDividers: false,
+    boldSectionTitles: false,
     pagePaddingXPx: 16,
     pagePaddingYPx: 12,
     paragraphSpacingPx: 4,

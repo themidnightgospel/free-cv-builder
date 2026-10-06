@@ -604,6 +604,8 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
           ref={contentRef}
           className={`cv-preview-content flex flex-col text-xs text-slate-900 print:transition-none${
             advanced.showSectionDividers ? ' cv-preview-content--dividers' : ''
+          }${
+            advanced.boldSectionTitles ? ' cv-preview-content--bold-titles' : ''
           }`}
           style={contentStyles}
         >

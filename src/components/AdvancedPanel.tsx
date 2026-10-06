@@ -268,6 +268,22 @@ export const AdvancedPanel: React.FC<AdvancedPanelProps> = ({
                 Show
               </label>
             </div>
+            <div className="flex items-center justify-between gap-3">
+              <label className="text-[12px] text-slate-700">
+                Section titles
+              </label>
+              <label className="inline-flex items-center gap-2 text-[12px] text-slate-700">
+                <input
+                  type="checkbox"
+                  data-testid="advanced-bold-section-titles"
+                  checked={advancedSettings.boldSectionTitles}
+                  onChange={(event) =>
+                    setAdvanced('boldSectionTitles', event.target.checked)
+                  }
+                />
+                Bold
+              </label>
+            </div>
           </div>
 
           <div className="space-y-3 sm:col-span-2">

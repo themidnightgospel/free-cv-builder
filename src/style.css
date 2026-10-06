@@ -89,6 +89,11 @@
   border-bottom: 0;
 }
 
+.cv-preview-content--bold-titles .font-section-title {
+  font-weight: 700;
+  color: #1e293b;
+}
+
 .cv-markdown p + p {
   margin-top: var(--cv-paragraph-spacing, 0.25rem);
 }

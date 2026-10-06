@@ -84,6 +84,7 @@ export const DEFAULT_ADVANCED_SETTINGS: AdvancedSettings = {
   lineHeight: 1.5,
   accentColor: '#2563eb',
   showSectionDividers: false,
+  boldSectionTitles: false,
   pagePaddingXPx: 16,
   pagePaddingYPx: 12,
   paragraphSpacingPx: 4,
@@ -194,6 +195,10 @@ export const normalizeAdvancedSettings = (value: unknown): AdvancedSettings => {
     showSectionDividers: normalizeBoolean(
       record.showSectionDividers,
       DEFAULT_ADVANCED_SETTINGS.showSectionDividers,
+    ),
+    boldSectionTitles: normalizeBoolean(
+      record.boldSectionTitles,
+      DEFAULT_ADVANCED_SETTINGS.boldSectionTitles,
     ),
     pagePaddingXPx: normalizePositiveNumber(
       record.pagePaddingXPx,

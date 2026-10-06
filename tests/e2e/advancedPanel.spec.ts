@@ -51,6 +51,20 @@ test.describe('Advanced settings panel', () => {
     await expect(preview).toHaveClass(/cv-preview-content--dividers/);
   });
 
+  test('bold section titles setting makes section titles bold', async ({
+    page,
+  }) => {
+    await page.getByTestId('advanced-toggle').click();
+    const sectionTitle = page
+      .locator('.cv-preview-content .font-section-title')
+      .first();
+    const fontWeight = () =>
+      sectionTitle.evaluate((el) => getComputedStyle(el).fontWeight);
+    expect(await fontWeight()).toBe('600');
+    await page.getByTestId('advanced-bold-section-titles').check();
+    await expect.poll(fontWeight).toBe('700');
+  });
+
   test('reset button restores defaults', async ({ page }) => {
     await page.getByTestId('advanced-toggle').click();
     const fullNameInput = page.getByRole('spinbutton', { name: 'Full name' });

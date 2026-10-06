@@ -27,6 +27,7 @@ export interface AdvancedSettings {
   lineHeight: number;
   accentColor: string;
   showSectionDividers: boolean;
+  boldSectionTitles: boolean;
   pagePaddingXPx: number;
   pagePaddingYPx: number;
   paragraphSpacingPx: number;
