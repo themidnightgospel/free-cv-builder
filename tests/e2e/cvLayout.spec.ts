@@ -32,7 +32,7 @@ const seedCv = {
 
 // Seed after the first load rather than via addInitScript, which would re-run
 // on every navigation (see persistence.spec.ts).
-const openSeededCv = async (page: Page) => {
+const openSeededCv = async (page: Page, cvToSeed = seedCv) => {
   await page.goto('/');
   await page.evaluate((cv) => {
     window.localStorage.clear();
@@ -43,7 +43,7 @@ const openSeededCv = async (page: Page) => {
       ]),
     );
     window.localStorage.setItem('freeCvBuilder:currentCvId', 'seeded');
-  }, seedCv);
+  }, cvToSeed);
   await page.goto('/');
   await expect(page.locator('h1')).toContainText('Ada Lovelace');
 };
@@ -70,6 +70,24 @@ test.describe('CV layout', () => {
     expect(Math.abs(first!.y - second!.y)).toBeLessThan(2);
   });
 
+  test('languages sit side by side instead of one per line', async ({
+    page,
+  }) => {
+    await openSeededCv(page, {
+      ...seedCv,
+      languages: [
+        { id: 'lang-1', name: 'Georgian', level: 'Native' },
+        { id: 'lang-2', name: 'English', level: 'Professional' },
+      ],
+      sectionsOrder: ['personal', 'languages'],
+    });
+    const first = await page.getByText('Georgian', { exact: true }).boundingBox();
+    const second = await page.getByText('English', { exact: true }).boundingBox();
+    expect(first).not.toBeNull();
+    expect(second).not.toBeNull();
+    expect(Math.abs(first!.y - second!.y)).toBeLessThan(2);
+  });
+
   test('header links show the domain but still point to the full address', async ({
     page,
   }) => {
@@ -79,5 +97,19 @@ test.describe('CV layout', () => {
     await expect(portfolio).toHaveText('toptal.com');
     const linkedin = printLayout.locator('a[href*="linkedin.com/in/ada"]');
     await expect(linkedin).toHaveText('linkedin.com');
+  });
+
+  test('an empty job title leaves no placeholder in the PDF', async ({
+    page,
+  }) => {
+    await openSeededCv(page, {
+      ...seedCv,
+      personalInfo: { ...seedCv.personalInfo, jobTitle: '' },
+    });
+    const printLayout = await openPrintLayout(page);
+    await expect(printLayout).toContainText('Ada Lovelace');
+    await expect(printLayout).not.toContainText(
+      'Job title or professional headline',
+    );
   });
 });

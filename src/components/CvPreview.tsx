@@ -330,18 +330,20 @@ const CvHeader: React.FC<CvHeaderProps> = ({ personalInfo, editor }) => {
               personalInfo.fullName || 'Your full name'
             )}
           </h1>
-          <p className="font-job-title text-slate-500">
-            {editor ? (
-              <EditableText
-                value={personalInfo.jobTitle}
-                onChange={(value) => updatePersonal({ jobTitle: value })}
-                placeholder="Job title or professional headline"
-                ariaLabel="Job title"
-              />
-            ) : (
-              personalInfo.jobTitle || 'Job title or professional headline'
-            )}
-          </p>
+          {(editor || personalInfo.jobTitle?.trim()) && (
+            <p className="font-job-title text-slate-500">
+              {editor ? (
+                <EditableText
+                  value={personalInfo.jobTitle}
+                  onChange={(value) => updatePersonal({ jobTitle: value })}
+                  placeholder="Job title or professional headline"
+                  ariaLabel="Job title"
+                />
+              ) : (
+                personalInfo.jobTitle
+              )}
+            </p>
+          )}
         </div>
       </div>
       <div className="flex flex-1 justify-end">
@@ -1606,6 +1608,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                   }),
                   addLabel: 'Add language',
                   entryLabel: 'language',
+                  entriesLayout: 'wrap',
                   displayFilter: languageHasContent,
                   isEditor,
                   ...sectionMoveHandlers,
