@@ -19,6 +19,7 @@ import { EditableToggle } from './editable/EditableToggle';
 import { AddSectionGap } from './editable/AddSectionGap';
 import type { AddSectionOption } from './editable/AddSectionGap';
 import { renderEditableSection } from './editable/renderEditableSection';
+import { getLinkDisplayName } from '../utils/linkLabel';
 import type {
   AchievementEntry,
   CustomSection,
@@ -259,7 +260,7 @@ const CvHeader: React.FC<CvHeaderProps> = ({ personalInfo, editor }) => {
         ) : key === 'website' || key === 'linkedin' ? (
           renderExternalLink(
             personalInfo[key] as string,
-            personalInfo[key] as string,
+            getLinkDisplayName(personalInfo[key] as string),
           )
         ) : (
           <>{personalInfo[key] as string}</>
@@ -1552,6 +1553,7 @@ export const CvPreview: React.FC<CvPreviewProps> = ({
                   }),
                   addLabel: 'Add skill',
                   entryLabel: 'skill',
+                  entriesLayout: 'wrap',
                   displayFilter: skillHasContent,
                   isEditor,
                   ...sectionMoveHandlers,

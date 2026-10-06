@@ -27,6 +27,9 @@ interface RenderEditableSectionArgs<T extends EntryWithId> {
   /** Singular label of a single entry (e.g. "experience"). Used by the
    *  delete confirmation prompt. */
   entryLabel?: string;
+  /** "stack" puts each entry on its own line; "wrap" flows short entries
+   *  such as skill chips side by side. Defaults to "stack". */
+  entriesLayout?: 'stack' | 'wrap';
   /** Editor flags from the parent CvPreview. */
   isEditor: boolean;
   onMoveSection?: (sectionId: SectionId, direction: -1 | 1) => void;
@@ -50,6 +53,7 @@ export function renderEditableSection<T extends EntryWithId>(
     displayFilter,
     addLabel,
     entryLabel,
+    entriesLayout = 'stack',
     isEditor,
     onMoveSection,
     onRemoveSection,
@@ -84,7 +88,13 @@ export function renderEditableSection<T extends EntryWithId>(
   return (
     <section>
       <SectionHeader title={title} {...(sectionControls ?? {})} />
-      <div className="space-y-2">
+      <div
+        className={
+          entriesLayout === 'wrap'
+            ? 'flex flex-wrap items-center gap-1.5'
+            : 'space-y-2'
+        }
+      >
         {visible.map((entry, idx) => {
           if (!isEditor) {
             return <div key={entry.id}>{renderEntry(entry, () => {})}</div>;
@@ -129,7 +139,7 @@ export function renderEditableSection<T extends EntryWithId>(
           <button
             type="button"
             onClick={handleAdd}
-            className="mt-2 inline-flex items-center gap-1 rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-[11px] font-medium text-muted transition hover:border-accent hover:bg-accent-soft hover:text-accent"
+            className={`${entriesLayout === 'wrap' ? '' : 'mt-2 '}inline-flex items-center gap-1 rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-[11px] font-medium text-muted transition hover:border-accent hover:bg-accent-soft hover:text-accent`}
           >
             + {addLabel}
           </button>
